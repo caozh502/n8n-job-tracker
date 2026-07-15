@@ -17,8 +17,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        -90704,
-        -2544
+        100,
+        300
       ]
     },
     {
@@ -31,8 +31,8 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        -90304,
-        -2544
+        540,
+        300
       ]
     },
     {
@@ -44,81 +44,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -90112,
-        -2544
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 从 Extract from File 接收原始 CV 文本\nconst rawText = $input.first().json.cvText || '';\n\nif (!rawText || rawText.trim().length < 20) {\n  return [{ prompt: 'CV 文本过短或为空', _meta: { warning: 'CV读取失败' } }];\n}\n\nconst prompt = `请将以下 CV 文本提炼为结构化的中文摘要，按以下格式输出，不要额外内容。\n\n## 输出格式（严格 JSON）\n{\n  \"name\": \"姓名（如文中无则留空）\",\n  \"education\": \"最高学历 + 学校 + 专业\",\n  \"status\": \"当前工作状态\",\n  \"experience_summary\": \"3-5 条核心经历，每条一句话\",\n  \"key_skills\": \"核心技能列表，逗号分隔\",\n  \"certificates\": \"相关证书\",\n  \"languages\": \"语言水平\",\n  \"location\": \"所在地点\",\n  \"target_roles\": \"根据 CV 推测的目标岗位类型\",\n  \"years_of_experience\": \"总工作经验年数（大约）\"\n}\n\n## CV 文本\n${rawText}`;\n\nreturn [{ prompt: prompt }];"
-      },
-      "id": "e134120b-8022-4dc8-97c2-2b0f54bf001f",
-      "name": "✍️ 准备 CV 提炼 Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -89904,
-        -2544
-      ]
-    },
-    {
-      "parameters": {
-        "prompt": "={{ $json.prompt }}",
-        "messages": {
-          "messageValues": [
-            {
-              "message": "你是一个 CV 信息提取专家。从 CV 文本中提取结构化信息，严格按要求的 JSON 格式输出。"
-            },
-            {
-              "type": "HumanMessagePromptTemplate",
-              "message": "={{ $json.prompt }}"
-            }
-          ]
-        }
-      },
-      "id": "59e84758-c880-4dc7-be04-b6ce7aeef25c",
-      "name": "🧹 AI 提炼 CV",
-      "type": "n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1,
-      "position": [
-        -89760,
-        -2656
-      ]
-    },
-    {
-      "parameters": {
-        "model": "deepseek-v4-flash",
-        "options": {
-          "maxTokens": 2000,
-          "temperature": 0.2
-        }
-      },
-      "id": "1e1f5a2d-3d9d-4ed4-aa08-d9b9bd9491bb",
-      "name": "🧠 DeepSeek Chat Model (CV)",
-      "type": "n8n-nodes-langchain.lmChatDeepSeek",
-      "typeVersion": 1,
-      "position": [
-        -89712,
-        -2352
-      ],
-      "credentials": {
-        "deepSeekApi": {
-          "id": "NXItNfVcOMfUJ3kd",
-          "name": "DeepSeek account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// LLM Chain 输出在 $json.text 中\nconst raw = $json.text || $json.output || '';\nif (!raw) return [{ cvText: 'CV 提炼失败' }];\n\n// 尝试提取 JSON\nlet summary;\ntry { summary = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) summary = JSON.parse(m[0]); }\n  catch(e2) { summary = { error: '解析失败', raw: raw.substring(0, 200) }; }\n}\n\n// 构建结构化的 CV 文本用于后续评分\nconst lines = [];\nif (summary.education) lines.push('- 学历: ' + summary.education);\nif (summary.status) lines.push('- 状态: ' + summary.status);\nif (summary.experience_summary) {\n  lines.push('- 经历:');\n  const exps = Array.isArray(summary.experience_summary) ? summary.experience_summary : [summary.experience_summary];\n  exps.forEach(e => lines.push('  - ' + e));\n}\nif (summary.key_skills) lines.push('- 技能: ' + summary.key_skills);\nif (summary.certificates) lines.push('- 证书: ' + summary.certificates);\nif (summary.languages) lines.push('- 语言: ' + summary.languages);\nif (summary.location) lines.push('- 地点: ' + summary.location);\nif (summary.target_roles) lines.push('- 目标岗位: ' + summary.target_roles);\nif (summary.years_of_experience) lines.push('- 经验: ' + summary.years_of_experience + '年');\n\nreturn [{ cvText: lines.join('\\n') }];"
-      },
-      "id": "9d6a1eb4-d0e7-4e60-b7cb-7ea983bbbac5",
-      "name": "📋 解析 CV 提炼结果",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -89504,
-        -2544
+        760,
+        300
       ]
     },
     {
@@ -146,8 +73,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -89312,
-        -2544
+        980,
+        300
       ]
     },
     {
@@ -177,8 +104,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -89104,
-        -2544
+        1200,
+        300
       ]
     },
     {
@@ -190,8 +117,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -88912,
-        -2544
+        1420,
+        300
       ]
     },
     {
@@ -204,8 +131,8 @@
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
-        -88704,
-        -2544
+        1640,
+        300
       ]
     },
     {
@@ -218,21 +145,21 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -88512,
-        -2544
+        1860,
+        300
       ]
     },
     {
       "parameters": {
-        "jsCode": "const cvContext = $node['📋 解析 CV 提炼结果'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji});\n\nconst prompt = `你是一个专业的招聘匹配顾问。请根据候选人的CV和岗位信息评估匹配度。\n\n## 原始数据（请原样返回）\n__META__${meta}__META_END__\n\n${cvContext}\n\n### 岗位信息\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### 评分标准\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | 领域/行业匹配度：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | 技能重叠度：对比CV和岗位描述中的技术栈、工具、方法论。匹配项越多、深度越深分数越高 |\n| experience_relevance | 0-25 | 经验相关性：候选人的项目/工作经历是否与岗位职责和要求匹配。考虑相关性和经验深度 |\n| seniority | 0-10 | 资历匹配：10=完美匹配当前经验层级；5=中等；0=完全不匹配 |\n| language_requirement | 0-10 | 语言要求：10=岗位接受候选人的语言能力（德语C1+英语C1）；5=部分匹配；0=不匹配 |\n| location_match | 0-10 | 地点匹配：10=慕尼黑或周边30km；8=巴伐利亚州/Hybrid；5=德国其他/Remote；0=国外 |\n\n总分 overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match\n\n### 推荐分类\n- overall >= 75 → \"高度符合\"\n- overall >= 60 → \"可以尝试\"\n- overall < 60 → \"不适合\"\n\n### 输出格式（严格JSON，不要额外内容）\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10 },\n  \"recommendation\": \"高度符合\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"简短匹配理由\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
+        "jsCode": "const cvContext = $node['📄 结构化 CV 文本'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji});\n\nconst prompt = `你是一个专业的招聘匹配顾问。请根据候选人的CV和岗位信息评估匹配度。\n\n## 原始数据（请原样返回）\n__META__${meta}__META_END__\n\n${cvContext}\n\n### 岗位信息\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### 评分标准\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | 领域/行业匹配度：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | 技能重叠度：对比CV和岗位描述中的技术栈、工具、方法论。匹配项越多、深度越深分数越高 |\n| experience_relevance | 0-25 | 经验相关性：候选人的项目/工作经历是否与岗位职责和要求匹配。考虑相关性和经验深度 |\n| seniority | 0-10 | 资历匹配：10=完美匹配当前经验层级；5=中等；0=完全不匹配 |\n| language_requirement | 0-10 | 语言要求：10=岗位接受候选人的语言能力（德语C1+英语C1）；5=部分匹配；0=不匹配 |\n| location_match | 0-10 | 地点匹配：10=慕尼黑或周边30km；8=巴伐利亚州/Hybrid；5=德国其他/Remote；0=国外 |\n\n总分 overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match\n\n### 推荐分类\n- overall >= 75 → \"高度符合\"\n- overall >= 60 → \"可以尝试\"\n- overall < 60 → \"不适合\"\n\n### 输出格式（严格JSON，不要额外内容）\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10 },\n  \"recommendation\": \"高度符合\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"简短匹配理由\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
       },
       "id": "d2eacb61-4673-4f3f-be67-4cac2af8f09f",
       "name": "✍️ 准备打分 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -88304,
-        -2544
+        2080,
+        300
       ]
     },
     {
@@ -255,8 +182,8 @@
       "type": "n8n-nodes-langchain.chainLlm",
       "typeVersion": 1,
       "position": [
-        -88112,
-        -2544
+        2300,
+        300
       ]
     },
     {
@@ -272,8 +199,8 @@
       "type": "n8n-nodes-langchain.lmChatDeepSeek",
       "typeVersion": 1,
       "position": [
-        -88112,
-        -2304
+        2520,
+        500
       ],
       "credentials": {
         "deepSeekApi": {
@@ -311,8 +238,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -87312,
-        -2544
+        3400,
+        300
       ]
     },
     {
@@ -368,8 +295,8 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        -87104,
-        -2608
+        3620,
+        200
       ],
       "credentials": {
         "notionApi": {
@@ -407,8 +334,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -87104,
-        -2448
+        3840,
+        350
       ]
     },
     {
@@ -464,8 +391,8 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        -86912,
-        -2448
+        4060,
+        350
       ],
       "credentials": {
         "notionApi": {
@@ -481,8 +408,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -86912,
-        -2336
+        4280,
+        470
       ]
     },
     {
@@ -494,8 +421,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -87904,
-        -2544
+        2740,
+        300
       ]
     },
     {
@@ -507,8 +434,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -87712,
-        -2544
+        2960,
+        300
       ]
     },
     {
@@ -521,8 +448,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -87504,
-        -2544
+        3180,
+        300
       ]
     },
     {
@@ -533,8 +460,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        -90512,
-        -2544
+        320,
+        300
       ],
       "id": "57cbb67f-2648-472a-b6d1-9da36223c1a2",
       "name": "📄 读取 CV.pdf"
@@ -765,7 +692,7 @@
       "main": [
         [
           {
-            "node": "✍️ 准备 CV 提炼 Prompt",
+            "node": "🔍 搜索参数配置",
             "type": "main",
             "index": 0
           }
@@ -778,50 +705,6 @@
           {
             "node": "📄 提取 PDF 文本",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "✍️ 准备 CV 提炼 Prompt": {
-      "main": [
-        [
-          {
-            "node": "🧹 AI 提炼 CV",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🧹 AI 提炼 CV": {
-      "main": [
-        [
-          {
-            "node": "📋 解析 CV 提炼结果",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📋 解析 CV 提炼结果": {
-      "main": [
-        [
-          {
-            "node": "🔍 搜索参数配置",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🧠 DeepSeek Chat Model (CV)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "🧹 AI 提炼 CV",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]

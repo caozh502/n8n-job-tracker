@@ -17,8 +17,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        -90704,
-        -2544
+        100,
+        300
       ]
     },
     {
@@ -31,8 +31,8 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        -90304,
-        -2544
+        540,
+        300
       ]
     },
     {
@@ -44,81 +44,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -90112,
-        -2544
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Receive raw CV text from Extract from File\nconst rawText = $input.first().json.cvText || '';\n\nif (!rawText || rawText.trim().length < 20) {\n  return [{ prompt: 'CV text too short or empty', _meta: { warning: 'CV读取失败' } }];\n}\n\nconst prompt = `Summarize the following CV text into a structured format. Output as JSON only, no extra content.\n\n## 输出格式（严格 JSON）\n{\n  \"name\": \"Name (leave empty if not found)\",\n  \"education\": \"Highest degree + School + Major\",\n  \"status\": \"Current work status\",\n  \"experience_summary\": \"3-5 key experiences, one sentence each\",\n  \"key_skills\": \"Key skills, comma separated\",\n  \"certificates\": \"Certificates\",\n  \"languages\": \"Language proficiency\",\n  \"location\": \"Location\",\n  \"target_roles\": \"Target roles inferred from CV\",\n  \"years_of_experience\": \"Total years of experience (approx.)\"\n}\n\n## CV Text\n${rawText}`;\n\nreturn [{ prompt: prompt }];"
-      },
-      "id": "e134120b-8022-4dc8-97c2-2b0f54bf001f",
-      "name": "✍️ Prepare CV Summary Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -89904,
-        -2544
-      ]
-    },
-    {
-      "parameters": {
-        "prompt": "={{ $json.prompt }}",
-        "messages": {
-          "messageValues": [
-            {
-              "message": "You are a CV information extraction expert. Extract structured information from CV text, strictly in the requested JSON format."
-            },
-            {
-              "type": "HumanMessagePromptTemplate",
-              "message": "={{ $json.prompt }}"
-            }
-          ]
-        }
-      },
-      "id": "59e84758-c880-4dc7-be04-b6ce7aeef25c",
-      "name": "🧹 AI Summarize CV",
-      "type": "n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1,
-      "position": [
-        -89760,
-        -2656
-      ]
-    },
-    {
-      "parameters": {
-        "model": "deepseek-v4-flash",
-        "options": {
-          "maxTokens": 2000,
-          "temperature": 0.2
-        }
-      },
-      "id": "1e1f5a2d-3d9d-4ed4-aa08-d9b9bd9491bb",
-      "name": "🧠 DeepSeek Chat Model (CV)",
-      "type": "n8n-nodes-langchain.lmChatDeepSeek",
-      "typeVersion": 1,
-      "position": [
-        -89712,
-        -2352
-      ],
-      "credentials": {
-        "deepSeekApi": {
-          "id": "NXItNfVcOMfUJ3kd",
-          "name": "DeepSeek account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// LLM Chain 输出在 $json.text 中\nconst raw = $json.text || $json.output || '';\nif (!raw) return [{ cvText: 'CV summary failed' }];\n\n// 尝试提取 JSON\nlet summary;\ntry { summary = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) summary = JSON.parse(m[0]); }\n  catch(e2) { summary = { error: 'Parse failed', raw: raw.substring(0, 200) }; }\n}\n\n// 构建结构化的 CV 文本用于后续评分\nconst lines = [];\nif (summary.education) lines.push('- 学历: ' + summary.education);\nif (summary.status) lines.push('- 状态: ' + summary.status);\nif (summary.experience_summary) {\n  lines.push('- 经历:');\n  const exps = Array.isArray(summary.experience_summary) ? summary.experience_summary : [summary.experience_summary];\n  exps.forEach(e => lines.push('  - ' + e));\n}\nif (summary.key_skills) lines.push('- 技能: ' + summary.key_skills);\nif (summary.certificates) lines.push('- 证书: ' + summary.certificates);\nif (summary.languages) lines.push('- 语言: ' + summary.languages);\nif (summary.location) lines.push('- 地点: ' + summary.location);\nif (summary.target_roles) lines.push('- 目标岗位: ' + summary.target_roles);\nif (summary.years_of_experience) lines.push('- 经验: ' + summary.years_of_experience + '年');\n\nreturn [{ cvText: lines.join('\\n') }];"
-      },
-      "id": "9d6a1eb4-d0e7-4e60-b7cb-7ea983bbbac5",
-      "name": "📋 Parse CV Summary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -89504,
-        -2544
+        760,
+        300
       ]
     },
     {
@@ -146,8 +73,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -89312,
-        -2544
+        980,
+        300
       ]
     },
     {
@@ -177,8 +104,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -89104,
-        -2544
+        1200,
+        300
       ]
     },
     {
@@ -190,8 +117,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -88912,
-        -2544
+        1420,
+        300
       ]
     },
     {
@@ -204,8 +131,8 @@
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
-        -88704,
-        -2544
+        1640,
+        300
       ]
     },
     {
@@ -218,8 +145,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -88512,
-        -2544
+        1860,
+        300
       ]
     },
     {
@@ -231,8 +158,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -88304,
-        -2544
+        2080,
+        300
       ]
     },
     {
@@ -255,8 +182,8 @@
       "type": "n8n-nodes-langchain.chainLlm",
       "typeVersion": 1,
       "position": [
-        -88112,
-        -2544
+        2300,
+        300
       ]
     },
     {
@@ -272,8 +199,8 @@
       "type": "n8n-nodes-langchain.lmChatDeepSeek",
       "typeVersion": 1,
       "position": [
-        -88112,
-        -2304
+        2520,
+        500
       ],
       "credentials": {
         "deepSeekApi": {
@@ -311,8 +238,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -87312,
-        -2544
+        3400,
+        300
       ]
     },
     {
@@ -368,8 +295,8 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        -87104,
-        -2608
+        3620,
+        200
       ],
       "credentials": {
         "notionApi": {
@@ -407,8 +334,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -87104,
-        -2448
+        3840,
+        350
       ]
     },
     {
@@ -464,8 +391,8 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        -86912,
-        -2448
+        4060,
+        350
       ],
       "credentials": {
         "notionApi": {
@@ -481,8 +408,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -86912,
-        -2336
+        4280,
+        470
       ]
     },
     {
@@ -494,8 +421,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -87904,
-        -2544
+        2740,
+        300
       ]
     },
     {
@@ -507,8 +434,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -87712,
-        -2544
+        2960,
+        300
       ]
     },
     {
@@ -521,8 +448,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -87504,
-        -2544
+        3180,
+        300
       ]
     },
     {
@@ -533,8 +460,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        -90512,
-        -2544
+        320,
+        300
       ],
       "id": "57cbb67f-2648-472a-b6d1-9da36223c1a2",
       "name": "📄 Read CV.pdf"
@@ -765,7 +692,7 @@
       "main": [
         [
           {
-            "node": "✍️ Prepare CV Summary Prompt",
+            "node": "🔍 Search Config",
             "type": "main",
             "index": 0
           }
@@ -778,50 +705,6 @@
           {
             "node": "📄 Extract PDF Text",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "✍️ Prepare CV Summary Prompt": {
-      "main": [
-        [
-          {
-            "node": "🧹 AI Summarize CV",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🧹 AI Summarize CV": {
-      "main": [
-        [
-          {
-            "node": "📋 Parse CV Summary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📋 Parse CV Summary": {
-      "main": [
-        [
-          {
-            "node": "🔍 Search Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🧠 DeepSeek Chat Model (CV)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "🧹 AI Summarize CV",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]

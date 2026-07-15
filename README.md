@@ -28,16 +28,21 @@ Both workflows are functionally identical. Import whichever suits your preferenc
 ## Architecture
 
 ```
-┌─────────────┐    ┌──────────────────┐    ┌──────────────┐
-│  Puppeteer   │───▶│  DeepSeek LLM    │───▶│   Notion DB  │
-│  scrape      │    │  score + rank    │    │   save       │
-│  LinkedIn    │    │                  │    │              │
-└─────────────┘    └──────────────────┘    └──────────────┘
-       ▲                                        │
-       │        ┌──────────────────┐             │
-       └────────│  scraper_server  │◄────────────┘
-                │  (local HTTP)    │
-                └──────────────────┘
+⏰ → 📄 Read CV.pdf → 📄 Extract PDF Text → 📄 Structure CV Text
+    → 🔍 Search Config → 🌐 Scrape LinkedIn Jobs → 📋 Parse Job List
+    → ✂️ Split Items → 🔄 Process Each Job (scoring loop)
+        │
+        ├── main[0] (loop): ✍️ Prepare Prompt → 🧠 LLM Chain → 📊 Parse Score → ↻
+        │                                    │
+        │                                    └──ai──▶ 🧠 DeepSeek
+        │
+        └── main[1] (done): 📊 Sort + Top15 → 🔄 Write Each (Notion loop)
+                                                 │
+                                            🔝 Tier 1 (≥75) → 📝 Notion ⭐
+                                                 │ false
+                                            🔝 Tier 2 (≥60) → 📝 Notion 💪
+                                                 │ false
+                                             ⏭️ Skip
 ```
 
 ## Prerequisites
@@ -86,9 +91,12 @@ Open `http://localhost:5678` in your browser, then:
 ### 5. Import the Workflow
 
 1. Create a new workflow in n8n
-2. **Import from File** → select `n8n-job-scraper-workflow.json`
-3. Wire up the credentials to the nodes that ask for them
-4. **Save** and **Execute Workflow**
+2. **Import from File** → select one of:
+   - `n8n-job-scraper-workflow_en.json` (English)
+   - `n8n-job-scraper-workflow_zh.json` (中文)
+3. Wire up the DeepSeek and Notion credentials when prompted
+4. Place your `CV.pdf` in the `cv/` folder
+5. **Save** and **Execute Workflow**
 
 ### 6. Customise Your CV
 
@@ -123,12 +131,17 @@ DeepSeek evaluates each job against your CV across **7 dimensions** (0–100 tot
 | seniority | 0–10 | Seniority level fit |
 | language_requirement | 0–10 | Language skills match |
 | location_match | 0–10 | Geography preference |
-| bonus | 0–10 | Company reputation, perks, growth |
+
+**Total:** 100 (background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match)
 
 **Tier thresholds:**
 - ★ **Highly Match** ≥ 75
 - 💪 **Can Try** ≥ 60
 - ❌ **Skip** < 60
+
+### CV Processing
+
+The workflow reads your CV (PDF) via `Read/Write Files from Disk`, extracts text with `Extract from File`, then passes the raw text directly to DeepSeek during scoring. No intermediate AI summarization — the scoring LLM reads your full CV context.
 
 ## Notion Database Schema
 
