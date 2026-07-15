@@ -24,6 +24,7 @@ Thumbs.db
 # Debug / temp
 *.log
 *.tmp
+.hermes-tmp*/
 
 # IDE
 .vscode/
