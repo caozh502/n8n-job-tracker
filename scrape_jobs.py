@@ -14,7 +14,7 @@ def _s(val):
 
 def main():
     keywords = sys.argv[1] if len(sys.argv) > 1 else 'QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test'
-    location = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Bavaria, Baden-Württemberg, Germany'
+    location = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Germany'
 
     try:
         jobs = scrape_jobs(
