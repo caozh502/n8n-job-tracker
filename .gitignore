@@ -3,7 +3,8 @@
 .env.local
 
 # CV and personal data
-cv/
+cv/*
+!cv/.gitkeep
 *.pdf
 
 # Node
