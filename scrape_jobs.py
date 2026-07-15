@@ -34,6 +34,11 @@ def main():
         job_type = str(row.get('job_type', '') or '').lower()
         job_url = str(row.get('job_url', '') or '')
         date = str(row.get('date_posted', '') or '')
+        # Handle NaN from pandas
+        for var in ['title', 'company', 'location', 'desc', 'site', 'job_type', 'job_url', 'date']:
+            val = locals()[var]
+            if val.lower() == 'nan':
+                locals()[var] = ''
 
         # Filter: skip part-time/contract/internship; keep if unknown
         PART_TIME = ['parttime', 'part-time', 'contract', 'temporary', 'internship', '实习']
