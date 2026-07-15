@@ -17,21 +17,32 @@ def main():
     location = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Germany'
 
     try:
-        jobs = scrape_jobs(
-            site_name=["linkedin", "indeed"],
-            search_term=keywords,
-            location=location,
-            results_wanted=60,
-            hours_old=24,
-            country_indeed='germany',
-            linkedin_fetch_description=True,
-        )
+        all_jobs = []
+        seen_urls = set()
+        locations = ['Munich, Germany', 'Bavaria, Germany', 'Baden-Württemberg, Germany', 'Germany']
+
+        for loc in locations:
+            jobs = scrape_jobs(
+                site_name=["linkedin", "indeed"],
+                search_term=keywords,
+                location=loc,
+                results_wanted=15,
+                hours_old=24,
+                country_indeed='germany',
+                linkedin_fetch_description=False,
+            )
+            for _, row in jobs.iterrows():
+                url = _s(row.get('job_url'))
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                all_jobs.append(row)
     except Exception as e:
         print(json.dumps({"error": str(e), "jobs": []}))
         sys.exit(1)
 
     results = []
-    for _, row in jobs.iterrows():
+    for row in all_jobs:
         title = _s(row.get('title'))
         company = _s(row.get('company'))
         location = _s(row.get('location'))
