@@ -8,7 +8,7 @@ async function main() {
   await page.setExtraHTTPHeaders({'Accept-Language':'de-DE,de;q=0.9'});
 
   const kw = process.argv[2] || 'QA Engineer';
-  const loc = process.argv[3] || 'Munich, Germany';
+  const loc = process.argv[3] || 'Munich, Bavaria, Baden-Württemberg, Germany';
   const url = `https://www.linkedin.com/jobs/search?keywords=${encodeURIComponent(kw)}&location=${encodeURIComponent(loc)}&f_TPR=r86400`;
   console.error('Fetching:', url);
   await page.goto(url,{waitUntil:'networkidle2',timeout:30000});
