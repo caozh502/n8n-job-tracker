@@ -20,14 +20,19 @@ def main():
         # Phase 1: Search multiple locations (no descriptions, fast)
         all_rows = []
         seen_urls = set()
-        locations = ['Munich, Germany', 'Bavaria, Germany', 'Baden-Württemberg, Germany', 'Germany']
+        locations = [
+            ('Munich, Germany', 15),
+            ('Bavaria, Germany', 9),
+            ('Baden-Württemberg, Germany', 6),
+            ('Germany', 6),
+        ]
 
-        for loc in locations:
+        for loc, limit in locations:
             jobs = scrape_jobs(
                 site_name=["linkedin", "indeed"],
                 search_term=keywords,
                 location=loc,
-                results_wanted=8,
+                results_wanted=limit,
                 hours_old=24,
                 country_indeed='germany',
                 linkedin_fetch_description=True,
