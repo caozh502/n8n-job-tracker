@@ -221,3 +221,7 @@ PRs welcome! If you find a bug or have a feature idea, open an issue first.
 ---
 
 *Built with [n8n Official Skills](https://github.com/n8n-io/skills) for workflow best practices.*
+
+## Acknowledgments
+
+- **[DailyJobMatch](https://github.com/Yulin27/DailyJobMatch)** — This project was inspired by and references their workflow architecture for job scraping, scoring, and Notion integration.
