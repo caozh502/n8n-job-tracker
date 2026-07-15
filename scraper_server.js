@@ -1,10 +1,10 @@
-// 本地服务：接收 n8n HTTP 请求，执行 Puppeteer 抓取 LinkedIn 岗位
+// 本地服务：接收 n8n HTTP 请求，执行 JobSpy 抓取 LinkedIn + Indeed 岗位
 const http = require('http');
 const { execFile } = require('child_process');
 const path = require('path');
 
 const PORT = process.env.SCRAPER_PORT || 3456;
-const scraperPath = path.join(__dirname, 'scrape_linkedin.js');
+const scraperPath = path.join(__dirname, 'scrape_jobs.py');
 
 const server = http.createServer((req, res) => {
   res.setHeader('Content-Type', 'application/json');
@@ -26,18 +26,17 @@ const server = http.createServer((req, res) => {
 
     console.log(`Scraping: ${keywords} in ${location}`);
 
-    execFile('node', [scraperPath, keywords, location], {
-      timeout: 180000,
-      env: { ...process.env, NODE_PATH: path.join(__dirname, 'node_modules') }
+    execFile('python', [scraperPath, keywords, location], {
+      timeout: 120000,
     }, (err, stdout, stderr) => {
       if (err) {
         console.error('Scraper error:', stderr);
-        res.end(JSON.stringify({ error: err.message, stderr }));
+        res.end(JSON.stringify({ error: err.message, stderr: stderr.substring(0, 500) }));
         return;
       }
       try {
-        const jobs = JSON.parse(stdout);
-        res.end(JSON.stringify({ count: jobs.length, jobs }));
+        const data = JSON.parse(stdout);
+        res.end(JSON.stringify({ count: data.count || data.jobs?.length || 0, jobs: data.jobs || data }));
       } catch(e) {
         res.end(JSON.stringify({ error: 'Parse failed', raw: stdout.substring(0, 500) }));
       }
@@ -46,5 +45,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`LinkedIn scraper server on http://localhost:${PORT}`);
+  console.log(`JobSpy scraper server on http://localhost:${PORT}`);
 });
