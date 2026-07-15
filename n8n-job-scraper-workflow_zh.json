@@ -17,8 +17,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        -111440,
-        -4384
+        100,
+        300
       ]
     },
     {
@@ -31,8 +31,8 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        -111008,
-        -4384
+        540,
+        300
       ]
     },
     {
@@ -44,8 +44,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -110784,
-        -4384
+        760,
+        300
       ]
     },
     {
@@ -73,8 +73,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -110560,
-        -4384
+        980,
+        300
       ]
     },
     {
@@ -103,8 +103,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -110336,
-        -4384
+        1200,
+        300
       ]
     },
     {
@@ -116,8 +116,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -110128,
-        -4384
+        1420,
+        300
       ]
     },
     {
@@ -130,8 +130,8 @@
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
-        -109904,
-        -4384
+        1640,
+        300
       ]
     },
     {
@@ -144,8 +144,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -109680,
-        -4384
+        1860,
+        300
       ]
     },
     {
@@ -157,8 +157,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -109456,
-        -4384
+        2080,
+        300
       ]
     },
     {
@@ -181,8 +181,8 @@
       "type": "n8n-nodes-langchain.chainLlm",
       "typeVersion": 1,
       "position": [
-        -109248,
-        -4384
+        2300,
+        300
       ]
     },
     {
@@ -198,8 +198,8 @@
       "type": "n8n-nodes-langchain.lmChatDeepSeek",
       "typeVersion": 1,
       "position": [
-        -109024,
-        -4176
+        2520,
+        500
       ],
       "credentials": {
         "deepSeekApi": {
@@ -294,8 +294,8 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        -107920,
-        -4480
+        3620,
+        300
       ],
       "credentials": {
         "notionApi": {
@@ -390,8 +390,8 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        -107488,
-        -4336
+        4060,
+        300
       ],
       "credentials": {
         "notionApi": {
@@ -420,8 +420,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -108800,
-        -4384
+        2740,
+        300
       ]
     },
     {
@@ -433,8 +433,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -108576,
-        -4384
+        2960,
+        300
       ]
     },
     {
@@ -447,8 +447,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -108368,
-        -4384
+        3180,
+        300
       ]
     },
     {
@@ -459,8 +459,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        -111216,
-        -4384
+        320,
+        300
       ],
       "id": "176484f3-9007-4991-8418-6d035ffc05d9",
       "name": "📄 读取 CV.pdf"
