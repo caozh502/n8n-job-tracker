@@ -3,8 +3,14 @@
 JobSpy-based job scraper — replacement for Puppeteer LinkedIn scraper.
 Returns JSON to stdout for the n8n scraper_server to consume.
 """
-import json, sys, os, re
+import json, sys, os, re, math
 from jobspy import scrape_jobs
+
+def _s(val):
+    """Safely convert pandas value to string, replacing NaN with empty string."""
+    if isinstance(val, float) and math.isnan(val):
+        return ''
+    return str(val) if val is not None else ''
 
 def main():
     keywords = sys.argv[1] if len(sys.argv) > 1 else 'QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test'
@@ -26,19 +32,14 @@ def main():
 
     results = []
     for _, row in jobs.iterrows():
-        title = str(row.get('title', '') or '')
-        company = str(row.get('company', '') or '')
-        location = str(row.get('location', '') or '')
-        desc = str(row.get('description', '') or '')
-        site = str(row.get('site', '') or '')
-        job_type = str(row.get('job_type', '') or '').lower()
-        job_url = str(row.get('job_url', '') or '')
-        date = str(row.get('date_posted', '') or '')
-        # Handle NaN from pandas
-        for var in ['title', 'company', 'location', 'desc', 'site', 'job_type', 'job_url', 'date']:
-            val = locals()[var]
-            if val.lower() == 'nan':
-                locals()[var] = ''
+        title = _s(row.get('title'))
+        company = _s(row.get('company'))
+        location = _s(row.get('location'))
+        desc = _s(row.get('description'))
+        site = _s(row.get('site'))
+        job_type = _s(row.get('job_type')).lower()
+        job_url = _s(row.get('job_url'))
+        date = _s(row.get('date_posted'))
 
         # Filter: skip part-time/contract/internship; keep if unknown
         PART_TIME = ['parttime', 'part-time', 'contract', 'temporary', 'internship', '实习']
