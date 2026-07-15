@@ -427,10 +427,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// 所有岗位打分完毕，排序+去重+Top15\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nreturn items.slice(0, 15).map(i => i.json);"
+        "jsCode": "// 所有岗位打分完毕，排序+去重+Top10\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nreturn items.slice(0, 10).map(i => i.json);"
       },
       "id": "0fd33c9b-73cf-4bbd-a5ec-af91d248194a",
-      "name": "📊 Sort + Top15",
+      "name": "📊 Sort + Top10",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
