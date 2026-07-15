@@ -7,8 +7,8 @@ import json, sys, os, re
 from jobspy import scrape_jobs
 
 def main():
-    keywords = sys.argv[1] if len(sys.argv) > 1 else 'QA Engineer OR Test Automation'
-    location = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Germany'
+    keywords = sys.argv[1] if len(sys.argv) > 1 else 'QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test'
+    location = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Bavaria, Baden-Württemberg, Germany'
 
     try:
         jobs = scrape_jobs(
