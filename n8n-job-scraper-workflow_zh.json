@@ -697,6 +697,17 @@
           }
         ]
       ]
+    },
+    "📊 排序+Top10": {
+      "main": [
+        [
+          {
+            "node": "🔄 逐条写入Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,

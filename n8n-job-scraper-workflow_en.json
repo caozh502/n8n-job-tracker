@@ -491,7 +491,7 @@
         ],
         [
           {
-            "node": "📊 Sort + Top15",
+            "node": "📊 Sort + Top10",
             "type": "main",
             "index": 0
           }
@@ -569,17 +569,6 @@
         [
           {
             "node": "🔄 Process Each Job",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📊 Sort + Top15": {
-      "main": [
-        [
-          {
-            "node": "🔄 Write to Notion",
             "type": "main",
             "index": 0
           }
@@ -704,6 +693,17 @@
         [
           {
             "node": "📄 Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Sort + Top10": {
+      "main": [
+        [
+          {
+            "node": "🔄 Write to Notion",
             "type": "main",
             "index": 0
           }
