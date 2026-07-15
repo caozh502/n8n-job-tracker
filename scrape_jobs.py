@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JobSpy-based job scraper — replacement for Puppeteer LinkedIn scraper.
+JobSpy-based job scraper — multi-location search + description fetch.
 Returns JSON to stdout for the n8n scraper_server to consume.
 """
 import json, sys, os, re, math
@@ -14,10 +14,11 @@ def _s(val):
 
 def main():
     keywords = sys.argv[1] if len(sys.argv) > 1 else 'QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test'
-    location = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Germany'
+    location_hint = sys.argv[2] if len(sys.argv) > 2 else 'Munich, Germany'
 
     try:
-        all_jobs = []
+        # Phase 1: Search multiple locations (no descriptions, fast)
+        all_rows = []
         seen_urls = set()
         locations = ['Munich, Germany', 'Bavaria, Germany', 'Baden-Württemberg, Germany', 'Germany']
 
@@ -26,23 +27,24 @@ def main():
                 site_name=["linkedin", "indeed"],
                 search_term=keywords,
                 location=loc,
-                results_wanted=15,
+                results_wanted=8,
                 hours_old=24,
                 country_indeed='germany',
-                linkedin_fetch_description=False,
+                linkedin_fetch_description=True,
             )
             for _, row in jobs.iterrows():
                 url = _s(row.get('job_url'))
                 if not url or url in seen_urls:
                     continue
                 seen_urls.add(url)
-                all_jobs.append(row)
+                all_rows.append(row)
+
     except Exception as e:
         print(json.dumps({"error": str(e), "jobs": []}))
         sys.exit(1)
 
     results = []
-    for row in all_jobs:
+    for row in all_rows:
         title = _s(row.get('title'))
         company = _s(row.get('company'))
         location = _s(row.get('location'))
@@ -52,12 +54,11 @@ def main():
         job_url = _s(row.get('job_url'))
         date = _s(row.get('date_posted'))
 
-        # Filter: skip part-time/contract/internship; keep if unknown
+        # Filter: skip part-time/contract/internship
         PART_TIME = ['parttime', 'part-time', 'contract', 'temporary', 'internship', '实习']
         if job_type and any(pt in job_type for pt in PART_TIME):
             continue
 
-        # Extract job ID from URL
         job_id = ''
         for pattern in [r'/jobs/view/(\d+)', r'/_(\d+)', r'/job/(\d+)']:
             m = re.search(pattern, job_url)
