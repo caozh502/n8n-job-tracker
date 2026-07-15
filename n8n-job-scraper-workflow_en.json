@@ -296,7 +296,7 @@
       "typeVersion": 2,
       "position": [
         3620,
-        300
+        200
       ],
       "credentials": {
         "notionApi": {
@@ -392,7 +392,7 @@
       "typeVersion": 2,
       "position": [
         4060,
-        300
+        370
       ],
       "credentials": {
         "notionApi": {
@@ -409,7 +409,7 @@
       "typeVersion": 1,
       "position": [
         4280,
-        470
+        490
       ]
     },
     {

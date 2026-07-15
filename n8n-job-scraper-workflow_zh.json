@@ -237,8 +237,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -108144,
-        -4384
+        3400,
+        300
       ]
     },
     {
@@ -295,7 +295,7 @@
       "typeVersion": 2,
       "position": [
         3620,
-        300
+        200
       ],
       "credentials": {
         "notionApi": {
@@ -333,8 +333,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -107696,
-        -4336
+        3840,
+        370
       ]
     },
     {
@@ -391,7 +391,7 @@
       "typeVersion": 2,
       "position": [
         4060,
-        300
+        370
       ],
       "credentials": {
         "notionApi": {
@@ -407,8 +407,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -107264,
-        -4208
+        4280,
+        490
       ]
     },
     {
