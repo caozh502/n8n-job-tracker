@@ -21,10 +21,10 @@ def main():
         all_rows = []
         seen_urls = set()
         locations = [
-            ('Munich, Germany', 15),
-            ('Bavaria, Germany', 9),
-            ('Baden-Württemberg, Germany', 6),
-            ('Germany', 6),
+            ('Munich, Germany', 12),
+            ('Bavaria, Germany', 4),
+            ('Baden-Württemberg, Germany', 2),
+            ('Germany', 2),
         ]
 
         for loc, limit in locations:
