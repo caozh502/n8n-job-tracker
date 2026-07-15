@@ -1,0 +1,845 @@
+{
+  "name": "🤖 每日求职自动化 - LinkedIn + DeepSeek + Notion",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "6598d355-2cd8-4194-a89c-d1a53761efb1",
+      "name": "⏰ Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -90704,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "7d6fc23a-70e0-4cf6-898e-6c7c9ccdb4cf",
+      "name": "📄 Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -90304,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract from File outputs text in $json.text\n// No complex parsing, output raw text as CV info\nconst rawText = $json.text || $json.data || '';\nif (!rawText) return [{ cvText: 'CV read failed. Make sure cv/CV.pdf exists and is readable.' }];\n\n// Simple cleanup: remove extra whitespace, truncate long text\nconst cleanText = rawText.replace(/\\s+/g, ' ').trim();\nconst maxLen = 30000;\nconst cvText = cleanText.length > maxLen ? cleanText.substring(0, maxLen) + '...' : cleanText;\n\nreturn [{ cvText: cvText }];"
+      },
+      "id": "9154fa77-1870-49ad-86f3-e4a3f819661e",
+      "name": "📄 Structure CV Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -90112,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Receive raw CV text from Extract from File\nconst rawText = $input.first().json.cvText || '';\n\nif (!rawText || rawText.trim().length < 20) {\n  return [{ prompt: 'CV text too short or empty', _meta: { warning: 'CV读取失败' } }];\n}\n\nconst prompt = `Summarize the following CV text into a structured format. Output as JSON only, no extra content.\n\n## 输出格式（严格 JSON）\n{\n  \"name\": \"Name (leave empty if not found)\",\n  \"education\": \"Highest degree + School + Major\",\n  \"status\": \"Current work status\",\n  \"experience_summary\": \"3-5 key experiences, one sentence each\",\n  \"key_skills\": \"Key skills, comma separated\",\n  \"certificates\": \"Certificates\",\n  \"languages\": \"Language proficiency\",\n  \"location\": \"Location\",\n  \"target_roles\": \"Target roles inferred from CV\",\n  \"years_of_experience\": \"Total years of experience (approx.)\"\n}\n\n## CV Text\n${rawText}`;\n\nreturn [{ prompt: prompt }];"
+      },
+      "id": "e134120b-8022-4dc8-97c2-2b0f54bf001f",
+      "name": "✍️ Prepare CV Summary Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -89904,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "prompt": "={{ $json.prompt }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a CV information extraction expert. Extract structured information from CV text, strictly in the requested JSON format."
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "={{ $json.prompt }}"
+            }
+          ]
+        }
+      },
+      "id": "59e84758-c880-4dc7-be04-b6ce7aeef25c",
+      "name": "🧹 AI Summarize CV",
+      "type": "n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1,
+      "position": [
+        -89760,
+        -2656
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.2
+        }
+      },
+      "id": "1e1f5a2d-3d9d-4ed4-aa08-d9b9bd9491bb",
+      "name": "🧠 DeepSeek Chat Model (CV)",
+      "type": "n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -89712,
+        -2352
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "NXItNfVcOMfUJ3kd",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// LLM Chain 输出在 $json.text 中\nconst raw = $json.text || $json.output || '';\nif (!raw) return [{ cvText: 'CV summary failed' }];\n\n// 尝试提取 JSON\nlet summary;\ntry { summary = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) summary = JSON.parse(m[0]); }\n  catch(e2) { summary = { error: 'Parse failed', raw: raw.substring(0, 200) }; }\n}\n\n// 构建结构化的 CV 文本用于后续评分\nconst lines = [];\nif (summary.education) lines.push('- 学历: ' + summary.education);\nif (summary.status) lines.push('- 状态: ' + summary.status);\nif (summary.experience_summary) {\n  lines.push('- 经历:');\n  const exps = Array.isArray(summary.experience_summary) ? summary.experience_summary : [summary.experience_summary];\n  exps.forEach(e => lines.push('  - ' + e));\n}\nif (summary.key_skills) lines.push('- 技能: ' + summary.key_skills);\nif (summary.certificates) lines.push('- 证书: ' + summary.certificates);\nif (summary.languages) lines.push('- 语言: ' + summary.languages);\nif (summary.location) lines.push('- 地点: ' + summary.location);\nif (summary.target_roles) lines.push('- 目标岗位: ' + summary.target_roles);\nif (summary.years_of_experience) lines.push('- 经验: ' + summary.years_of_experience + '年');\n\nreturn [{ cvText: lines.join('\\n') }];"
+      },
+      "id": "9d6a1eb4-d0e7-4e60-b7cb-7ea983bbbac5",
+      "name": "📋 Parse CV Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -89504,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2105c2c1-0927-499b-a62e-806e3086a61d",
+              "name": "keywords",
+              "value": "QA Engineer OR Test Automation OR CI/CD OR Software Tester",
+              "type": "string"
+            },
+            {
+              "id": "46d90fd1-c5f9-4baa-a41c-c80ee2c3b892",
+              "name": "location",
+              "value": "Munich, Germany",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dbcdc9e8-2a65-476c-96aa-37a2a90b9517",
+      "name": "🔍 Search Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -89312,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3456",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {
+          "timeout": 180000
+        },
+        "jsonBody": "{\n  \"keywords\": \"={{ $json.keywords }}\",\n  \"location\": \"={{ $json.location }}\"\n}"
+      },
+      "id": "15b8149d-332d-4f2e-9de3-762b342c0237",
+      "name": "🌐 Scrape LinkedIn Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -89104,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// HTTP 响应：{ count: N, jobs: [...] }\nconst data = typeof $json === 'string' ? JSON.parse($json) : $json;\nconst jobs = data?.jobs || data || [];\n\nif (!Array.isArray(jobs) || jobs.length === 0) return [];\n\n// 过滤掉实习/学生岗位\nconst BAN = [/student/i, /intern/i, /werkstudent/i, /praktikant/i, /thesis/i, /masterarbeit/i, /bachelorarbeit/i];\nconst seen = new Set();\nconst result = [];\nfor (const j of jobs) {\n  const hay = ((j.title||'') + ' ' + (j.company||'')).toLowerCase();\n  if (BAN.some(re => re.test(hay))) continue;\n  const key = (j.title||'') + '|' + (j.company||'');\n  if (seen.has(key)) continue;\n  seen.add(key);\n  result.push({\n    jobId: j.jobId || '',\n    title: j.title || '',\n    company: j.company || '',\n    location: j.location || '',\n    link: j.fullLink || '',\n    description: j.description || '',\n    postedTime: j.postedTime || new Date().toISOString(),\n    fullLink: j.fullLink || `https://www.linkedin.com/jobs/view/${j.jobId}/`\n  });\n}\nreturn [{ jobs: result }];"
+      },
+      "id": "d75bcc94-1dba-4d44-be16-1ffec284d806",
+      "name": "📋 Parse Job List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -88912,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "jobs",
+        "options": {}
+      },
+      "id": "d72553b4-4e79-4cb5-a662-5ae9ce86f60b",
+      "name": "✂️ Split Items",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        -88704,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "cdf977fe-231d-4bf4-95e3-463b83074bc2",
+      "name": "🔄 Process Each Job",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        -88512,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cvContext = $node['📋 解析 CV 提炼结果'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji});\n\nconst prompt = `You are a professional recruitment matching consultant. Evaluate the match between the candidate's CV and the job posting.\n\n## Original Data (return as-is)\n__META__${meta}__META_END__\n\n${cvContext}\n\n### Job Info\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### Scoring Criteria\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | Domain/industry alignment：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | Skills overlap: compare tech stack, tools, methodologies. More matches = higher score |\n| experience_relevance | 0-25 | Experience relevance: how well does the candidate's experience match the role requirements |\n| seniority | 0-10 | Seniority match: 10=perfect, 5=moderate, 0=not matching |\n| language_requirement | 0-10 | Language: 10=full match (German C1+English C1), 5=partial, 0=not matching |\n| location_match | 0-10 | Location: 10=Munich area, 8=Bavaria/Hybrid, 5=Germany/Remote, 0=abroad |\n\nTotal overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match\n\n## Recommendation\n- overall >= 75 → \"Highly Match\"\n- overall >= 60 → \"Can Try\"\n- overall < 60 → \"Unfit\"\n\n## Output Format (strict JSON, no extra content)\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10 },\n  \"recommendation\": \"Highly Match\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"Brief match reason\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
+      },
+      "id": "d2eacb61-4673-4f3f-be67-4cac2af8f09f",
+      "name": "✍️ Prepare Scoring Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -88304,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "prompt": "={{ $json.prompt }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "你是一个Recruitment matching expert. Output strictly in JSON format as requested, no extra content."
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "={{ $json.prompt }}"
+            }
+          ]
+        }
+      },
+      "id": "9d52b46e-6b22-4c8d-a3a6-fd9d21b239dd",
+      "name": "🧠 LLM Chain - Score Match",
+      "type": "n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1,
+      "position": [
+        -88112,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {
+          "maxTokens": 3000,
+          "temperature": 0.3
+        }
+      },
+      "id": "8c3b6519-b54e-433c-bf63-392bdbc4cd90",
+      "name": "🧠 DeepSeek Chat Model",
+      "type": "n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -88112,
+        -2304
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "NXItNfVcOMfUJ3kd",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "5492b584-325e-47d0-9f12-d016db88252f",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 7.5,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8a65a24f-428c-4826-915c-5d5cde539337",
+      "name": "🔝 第一关: 高度符合 (≥7.5)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -87312,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "39ee7030-f79a-8071-a8ef-dfa9a1ecba1a",
+          "mode": "list",
+          "cachedResultName": "Job Recommendations",
+          "cachedResultUrl": "https://app.notion.com/p/39ee7030f79a8071a8efdfa9a1ecba1a"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Job Title|title",
+              "title": "={{ $json.title }}"
+            },
+            {
+              "key": "Company|rich_text",
+              "textContent": "={{ $json.company }}"
+            },
+            {
+              "key": "Location|select",
+              "selectValue": "={{ $json.location.split(',')[0].trim() }}"
+            },
+            {
+              "key": "Industry|select",
+              "selectValue": "={{ $json.industry }}"
+            },
+            {
+              "key": "Score|number",
+              "numberValue": "={{ $json.score }}"
+            },
+            {
+              "key": "Link|url",
+              "urlValue": "={{ $json.link }}"
+            },
+            {
+              "key": "Posted|date",
+              "date": "={{ $json.postedTime || $now }}"
+            },
+            {
+              "key": "Match Reason|rich_text",
+              "textContent": "={{ $json.reason }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "494525bc-28ad-4a11-8206-469b054fb303",
+      "name": "📝 Notion: ⭐ Highly Match",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -87104,
+        -2608
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "tcd5imju5iIX4ZPN",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "29c2c5c2-8e16-4c80-98eb-65aeab365ba4",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 6,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fbac05a4-7982-4304-9387-fa13ba794627",
+      "name": "🔝 第二关: 可以尝试 (≥6)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -87104,
+        -2448
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "39ee7030-f79a-8071-a8ef-dfa9a1ecba1a",
+          "mode": "list",
+          "cachedResultName": "Job Recommendations",
+          "cachedResultUrl": "https://app.notion.com/p/39ee7030f79a8071a8efdfa9a1ecba1a"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Job Title|title",
+              "title": "={{ $json.title }}"
+            },
+            {
+              "key": "Company|rich_text",
+              "textContent": "={{ $json.company }}"
+            },
+            {
+              "key": "Location|select",
+              "selectValue": "={{ $json.location.split(',')[0].trim() }}"
+            },
+            {
+              "key": "Industry|select",
+              "selectValue": "={{ $json.industry }}"
+            },
+            {
+              "key": "Score|number",
+              "numberValue": "={{ $json.score }}"
+            },
+            {
+              "key": "Link|url",
+              "urlValue": "={{ $json.link }}"
+            },
+            {
+              "key": "Posted|date",
+              "date": "={{ $json.postedTime || $now }}"
+            },
+            {
+              "key": "Match Reason|rich_text",
+              "textContent": "={{ $json.reason }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d90e0a26-5621-4726-97fa-79bc9c3880ce",
+      "name": "📝 Notion: 💪 Can Try",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -86912,
+        -2448
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "tcd5imju5iIX4ZPN",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "791a43b9-f1e1-44f2-bbc7-49b679d2229a",
+      "name": "⏭️ 跳过不适合 (<6)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -86912,
+        -2336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'Unfit', industry:'Other', reason:'Parse failed', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Highly Match';\n  else if (overall >= 60) r = 'Can Try';\n  else r = 'Unfit';\n}\n\nlet ml = '';\nif (r === 'Highly Match') ml = '⭐ Highly Match';\nelse if (r === 'Can Try') ml = '💪 Can Try';\nelse ml = '❌ Unfit';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+      },
+      "id": "c701e95c-9f53-4ae3-a8be-8d2fad516833",
+      "name": "📊 Parse Score Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -87904,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 所有岗位打分完毕，排序+去重+Top15\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nreturn items.slice(0, 15).map(i => i.json);"
+      },
+      "id": "0fd33c9b-73cf-4bbd-a5ec-af91d248194a",
+      "name": "📊 Sort + Top15",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -87712,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "14dac9b5-04d5-4b8d-a337-c6946b5325d2",
+      "name": "🔄 Write to Notion",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        -87504,
+        -2544
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "./cv/CV.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -90512,
+        -2544
+      ],
+      "id": "57cbb67f-2648-472a-b6d1-9da36223c1a2",
+      "name": "📄 Read CV.pdf"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🔍 Search Config": {
+      "main": [
+        [
+          {
+            "node": "🌐 Scrape LinkedIn Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Process Each Job": {
+      "main": [
+        [
+          {
+            "node": "✍️ Prepare Scoring Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📊 Sort + Top15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Scrape LinkedIn Jobs": {
+      "main": [
+        [
+          {
+            "node": "📋 Parse Job List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Parse Job List": {
+      "main": [
+        [
+          {
+            "node": "✂️ Split Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🧠 LLM Chain - Score Match",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✂️ Split Items": {
+      "main": [
+        [
+          {
+            "node": "🔄 Process Each Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✍️ Prepare Scoring Prompt": {
+      "main": [
+        [
+          {
+            "node": "🧠 LLM Chain - Score Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 LLM Chain - Score Match": {
+      "main": [
+        [
+          {
+            "node": "📊 Parse Score Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Parse Score Result": {
+      "main": [
+        [
+          {
+            "node": "🔄 Process Each Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Sort + Top15": {
+      "main": [
+        [
+          {
+            "node": "🔄 Write to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔝 第一关: 高度符合 (≥7.5)": {
+      "main": [
+        [
+          {
+            "node": "📝 Notion: ⭐ Highly Match",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔝 第二关: 可以尝试 (≥6)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔝 第二关: 可以尝试 (≥6)": {
+      "main": [
+        [
+          {
+            "node": "📝 Notion: 💪 Can Try",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "⏭️ 跳过不适合 (<6)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Write to Notion": {
+      "main": [
+        [
+          {
+            "node": "🔝 第一关: 高度符合 (≥7.5)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Notion: ⭐ Highly Match": {
+      "main": [
+        [
+          {
+            "node": "🔄 Write to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Notion: 💪 Can Try": {
+      "main": [
+        [
+          {
+            "node": "🔄 Write to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏭️ 跳过不适合 (<6)": {
+      "main": [
+        [
+          {
+            "node": "🔄 Write to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "📄 Read CV.pdf",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "📄 Structure CV Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Structure CV Text": {
+      "main": [
+        [
+          {
+            "node": "✍️ Prepare CV Summary Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Read CV.pdf": {
+      "main": [
+        [
+          {
+            "node": "📄 Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✍️ Prepare CV Summary Prompt": {
+      "main": [
+        [
+          {
+            "node": "🧹 AI Summarize CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧹 AI Summarize CV": {
+      "main": [
+        [
+          {
+            "node": "📋 Parse CV Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Parse CV Summary": {
+      "main": [
+        [
+          {
+            "node": "🔍 Search Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 DeepSeek Chat Model (CV)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🧹 AI Summarize CV",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "bb7fb0b3-6b26-4b47-9724-e3525c78bc71",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f9583a2878b9913846bae1d3c63adcc29894a195e5c2e8b215d593672edcd790"
+  },
+  "nodeGroups": [],
+  "id": "CITsvLWCfUkmDEsT",
+  "tags": []
+}

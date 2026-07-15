@@ -1,0 +1,29 @@
+# Personal / Environment
+.env
+.env.local
+
+# CV and personal data
+cv/
+*.pdf
+
+# Node
+node_modules/
+npm-debug.log*
+
+# n8n MCP / Agent config
+.agents/
+.claude/
+agent/
+skills-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug / temp
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
