@@ -29,6 +29,6 @@ echo   (This may take 1-2 minutes)
 echo ========================================
 echo.
 
-node "C:\c\Users\Caleb Tsao\npm-global\node_modules\n8n\bin\n8n" start --port=5678
+npx n8n start --port=5678
 
 pause
