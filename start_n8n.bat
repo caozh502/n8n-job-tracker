@@ -17,6 +17,8 @@ timeout /t 2 /nobreak >nul
 echo [2/3] Starting JobSpy scraper server...
 start "Scraper" cmd /c "node scraper_server.js"
 
+set N8N_RESTRICT_FILE_ACCESS_TO=E:\Caleb_Space\Code\n8n-job-tracker\cv
+
 :: Start n8n
 echo [3/3] Starting n8n...
 echo.
