@@ -7,15 +7,10 @@ cv/*
 !cv/.gitkeep
 *.pdf
 
-# Node
+# Python
+__pycache__/
+*.pyc
 node_modules/
-npm-debug.log*
-
-# n8n MCP / Agent config
-.agents/
-.claude/
-agent/
-skills-lock.json
 
 # OS
 .DS_Store

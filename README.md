@@ -1,20 +1,24 @@
-# 🤖 n8n Job Tracker — LinkedIn + DeepSeek + Notion
+# 🤖 n8n Job Tracker — LinkedIn/Indeed + DeepSeek + Notion
 
-> Automated daily job search: scrape LinkedIn → AI score with DeepSeek → save to Notion
+> Automated daily job search: scrape LinkedIn & Indeed → AI score with DeepSeek → save to Notion
 
 [![n8n](https://img.shields.io/badge/n8n-2.30-blue?logo=n8n)](https://n8n.io)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)]()
 
 ## Overview
 
 An n8n workflow that runs daily to:
 
-1. **🔍 Scrape** the latest LinkedIn job postings (Munich area, 24h filter) using Puppeteer
-2. **🤖 Score** each job against your CV using DeepSeek LLM (6-dimension scoring: skills, experience, seniority, language, location, industry)
-3. **📝 Save** top matches to a Notion database with scores and match reasons
+1. **🔍 Scrape** the latest job postings from LinkedIn (via [JobSpy](https://github.com/speedyapply/JobSpy) — 4 region searches: Munich, Bavaria, Baden-Württemberg, Germany-wide)  
+2. **🤖 Score** each job against your CV using DeepSeek LLM (7-dimension scoring: background, skills, experience, seniority, language, location, bonus)  
+3. **📝 Save** the Top 10 matches to a Notion database with scores and match reasons
 
-**Output:** 15 best-matching jobs per day, ranked by score with match reasons.
+**Key features:**
+- 🚫 Defense/Aerospace jobs automatically filtered out (citizenship restriction)
+- 🚗 Automotive roles get -5 penalty on background match
+- 📍 4-region search with 6:2:1:1 ratio (Munich : Bavaria : BW : Germany)
+- 🌐 Bilingual: English & 中文 workflow files
 
 ### Language Versions
 
@@ -29,57 +33,63 @@ Both workflows are functionally identical. Import whichever suits your preferenc
 
 ```
 ⏰ → 📄 Read CV.pdf → 📄 Extract PDF Text → 📄 Structure CV Text
-    → 🔍 Search Config → 🌐 Scrape LinkedIn Jobs → 📋 Parse Job List
-    → ✂️ Split Items → 🔄 Process Each Job (scoring loop)
+    → 🔍 Search Config → 🌐 Scrape LinkedIn + Indeed (JobSpy, 4 regions)
+    → 📋 Parse Job List → ✂️ Split Items → 🔄 Process Each Job (scoring loop)
         │
         ├── main[0] (loop): ✍️ Prepare Prompt → 🧠 LLM Chain → 📊 Parse Score → ↻
         │                                    │
         │                                    └──ai──▶ 🧠 DeepSeek
         │
-        └── main[1] (done): 📊 Sort + Top15 → 🔄 Write Each (Notion loop)
-                                                 │
-                                            🔝 Tier 1 (≥75) → 📝 Notion ⭐
-                                                 │ false
-                                            🔝 Tier 2 (≥60) → 📝 Notion 💪
-                                                 │ false
-                                             ⏭️ Skip
+        └── main[1] (done): 📊 Sort + Top10 (auto-filters Defense) → 🔄 Write Each
+                                                                    │
+                                                               🔝 Tier 1 (≥75) → 📝 Notion ⭐
+                                                                    │ false
+                                                               🔝 Tier 2 (≥60) → 📝 Notion 💪
+                                                                    │ false
+                                                                ⏭️ Skip
 ```
 
 ## Prerequisites
 
 | Requirement | Version / Notes |
 |-------------|----------------|
-| [Node.js](https://nodejs.org/) | >= 18 |
-| [n8n](https://docs.n8n.io/hosting/installation/) | 2.30+ (self-hosted) |
-| [Google Chrome](https://www.google.com/chrome/) | Installed (for Puppeteer) |
+| [Python](https://www.python.org/) | >= 3.10 |
+| [n8n](https://docs.n8n.io/hosting/installation/) | 2.30+ (self-hosted, npm install) |
 | [DeepSeek](https://platform.deepseek.com/) API Key | Paid account |
-| [Notion](https://www.notion.so/) Account | Free tier works — create an internal integration |
+| [Notion](https://www.notion.so/) Account | Free tier — create an internal integration |
 
 ## Quick Start
 
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-username/n8n-job-tracker.git
+git clone https://github.com/caozh502/n8n-job-tracker.git
 cd n8n-job-tracker
-npm install
+pip install -r requirements.txt
 ```
 
-### 2. Start n8n
+### 2. Place Your CV
 
-```bash
-n8n start --port=5678
-```
+Put `CV.pdf` in the `cv/` folder. The workflow reads it automatically.
 
 ### 3. Start the Scraper Server
 
 ```bash
-node scraper_server.js
+python scrape_jobs.py
+# Or on Windows: double-click start_n8n.bat
 ```
 
-The scraper server runs on `http://localhost:3456` and acts as a bridge between n8n and Puppeteer.
+### 4. Start n8n
 
-### 4. Configure Credentials in n8n
+```bash
+# On Windows — requires N8N_RESTRICT_FILE_ACCESS_TO to read cv/ folder
+set N8N_RESTRICT_FILE_ACCESS_TO=./cv
+n8n start --port=5678
+```
+
+Or use the included `start_n8n.bat` which handles both steps.
+
+### 5. Configure Credentials in n8n
 
 Open `http://localhost:5678` in your browser, then:
 
@@ -88,19 +98,14 @@ Open `http://localhost:5678` in your browser, then:
 | **DeepSeek** | `DeepSeek API` | Your DeepSeek API key |
 | **Notion** | `Notion API` | Internal Integration Token |
 
-### 5. Import the Workflow
+### 6. Import the Workflow
 
 1. Create a new workflow in n8n
 2. **Import from File** → select one of:
    - `n8n-job-scraper-workflow_en.json` (English)
    - `n8n-job-scraper-workflow_zh.json` (中文)
 3. Wire up the DeepSeek and Notion credentials when prompted
-4. Place your `CV.pdf` in the `cv/` folder
-5. **Save** and **Execute Workflow**
-
-### 6. Customise Your CV
-
-Edit the **📄 读取 CV (PDF/TXT)** Code node in the workflow and replace the placeholder CV text with your actual profile. This text is what DeepSeek uses to match against job descriptions.
+4. **Save** and **Execute Workflow**
 
 ## Project Structure
 
@@ -108,31 +113,35 @@ Edit the **📄 读取 CV (PDF/TXT)** Code node in the workflow and replace the 
 n8n-job-tracker/
 ├── n8n-job-scraper-workflow_en.json    # Main workflow (English)
 ├── n8n-job-scraper-workflow_zh.json    # Main workflow (中文)
-├── scrape_linkedin.js               # Puppeteer scraper — opens LinkedIn, extracts jobs + descriptions
-├── scraper_server.js                # Local HTTP server wrapping the scraper
-├── run_scrape.bat                   # Batch wrapper for the scraper (Windows)
-├── notion_database_template.md      # Notion DB schema reference
+├── scrape_jobs.py                      # JobSpy scraper → LinkedIn + Indeed
+├── scraper_server.js                   # Local HTTP wrapper (n8n → Python bridge)
+├── start_n8n.bat                       # One-click launcher (Windows)
+├── notion_database_template.md         # Notion DB schema reference
+├── requirements.txt                    # Python dependencies
 ├── README.md
-├── .env.example                     # Environment variable template
+├── .env.example                        # Environment variable template
 ├── .gitignore
-├── cv/                              # Place your CV.pdf here
-└── package.json
+├── cv/                                 # Place your CV.pdf here
+└── LICENSE
 ```
 
 ## How the Scoring Works
 
-DeepSeek evaluates each job against your CV across **7 dimensions** (0–100 total):
+DeepSeek evaluates each job against your CV across **7 dimensions** (100 total):
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
-| background_match | 0–10 | Domain / industry alignment |
+| background_match | 0–10 | Domain / industry alignment (Automotive: -5) |
 | skills_overlap | 0–25 | Technical skills match |
 | experience_relevance | 0–25 | Project / role relevance |
 | seniority | 0–10 | Seniority level fit |
 | language_requirement | 0–10 | Language skills match |
 | location_match | 0–10 | Geography preference |
+| bonus | 0–10 | Company reputation, growth potential, perks |
 
-**Total:** 100 (background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match)
+**Total:** 100 (background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match + bonus)
+
+**Defense/Aerospace jobs** are fully filtered out before sorting — they will never appear in your Top 10.
 
 **Tier thresholds:**
 - ★ **Highly Match** ≥ 75
@@ -141,18 +150,29 @@ DeepSeek evaluates each job against your CV across **7 dimensions** (0–100 tot
 
 ### CV Processing
 
-The workflow reads your CV (PDF) via `Read/Write Files from Disk`, extracts text with `Extract from File`, then passes the raw text directly to DeepSeek during scoring. No intermediate AI summarization — the scoring LLM reads your full CV context.
+The workflow reads your CV (PDF) via `Read/Write Files from Disk`, extracts text with `Extract from File`, then passes the raw text directly to DeepSeek during scoring. No intermediate AI summarization.
+
+### Multi-Region Search
+
+4 separate LinkedIn searches are performed and deduplicated:
+
+| Region | Results per search |
+|--------|-------------------|
+| Munich area | 24 |
+| Bavaria | 8 |
+| Baden-Württemberg | 4 |
+| Germany-wide | 4 |
+
+Approximately **30-40 unique jobs** after deduplication, all with full descriptions.
 
 ## Notion Database Schema
-
-The workflow writes to a Notion database with these columns:
 
 | Column | Type | Description |
 |--------|------|-------------|
 | Job Title | Title | Job title from LinkedIn |
 | Company | Rich Text | Company name |
-| Location | Rich Text | Job location |
-| Industry | Rich Text | Auto-categorised industry |
+| Location | Select | Job location |
+| Industry | Select | Auto-categorised industry |
 | Score | Number | DeepSeek overall score (0–100) |
 | Link | URL | Original LinkedIn job posting |
 | Posted | Date | Posting date |
@@ -162,52 +182,51 @@ The workflow writes to a Notion database with these columns:
 
 n8n supports `$env.VAR_NAME` expressions. Copy `.env.example` to `.env` and configure:
 
-```bash
-# Chrome path (required for Puppeteer)
-CHROME_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
+| Variable | Purpose |
+|----------|---------|
+| `N8N_RESTRICT_FILE_ACCESS_TO` | Allow n8n to read `cv/` folder (e.g. `./cv`) |
+| `SCRAPER_PORT` | Scraper server port (default: 3456) |
 
-# Scraper server port
-SCRAPER_PORT=3456
-```
-
-> **Note:** DeepSeek and Notion API keys are stored in n8n's built-in credential system, not in this repo. They are not exposed in the workflow export.
+> API keys (DeepSeek, Notion) are stored in n8n's credential system, not in this repo.
 
 ## Auto-Scheduling
 
-The workflow includes a **Schedule Trigger** node. To run daily:
 1. Open the workflow in n8n
 2. Click **Workflow Settings** (top-right)
 3. Toggle **Active** to enable scheduled execution
-
-The trigger is set to run daily (configurable in the Schedule Trigger node).
+4. The Schedule Trigger runs daily (configurable)
 
 ## Troubleshooting
 
 | Problem | Likely Cause | Fix |
 |---------|-------------|-----|
 | Scraper returns 0 jobs | LinkedIn guest rate limit | Wait a few minutes, try again |
-| DeepSeek score is 0 | API key not configured | Check n8n credentials for DeepSeek |
+| `Access to the file is not allowed` | Missing `N8N_RESTRICT_FILE_ACCESS_TO` | Set env var or use `start_n8n.bat` |
+| DeepSeek score is 0 | API key not configured | Check n8n credentials |
 | Notion page not created | API token / DB ID wrong | Verify Notion integration token |
-| Loop runs only once | SplitInBatches wiring | See [n8n Loops Skill](https://github.com/n8n-io/skills) |
-| `localhost:3456` refused | Scraper server not running | `node scraper_server.js` |
+| `jobspy` module not found | Missing pip install | `pip install python-jobspy` |
+| Loop runs only once | SplitInBatches wiring | See n8n loops documentation |
 
 ## Tech Stack
 
 - **[n8n](https://n8n.io/)** — Workflow automation (self-hosted, free)
+- **[JobSpy](https://github.com/speedyapply/JobSpy)** — Python job scraper (LinkedIn + Indeed)
 - **[DeepSeek](https://platform.deepseek.com/)** — LLM for job scoring
-- **[Puppeteer](https://pptr.dev/)** — Headless Chrome for LinkedIn scraping
 - **[Notion API](https://developers.notion.com/)** — Job database storage
-- **[n8n Official Skills](https://github.com/n8n-io/skills)** — Best practices for n8n workflow design
 
 ## Roadmap
 
-- [x] LinkedIn job scraping with Puppeteer
+- [x] LinkedIn job scraping (JobSpy)
+- [x] Multi-region search with dedup
 - [x] AI scoring with DeepSeek
+- [x] Defense industry auto-filter
+- [x] Automotive penalty deduction
 - [x] Notion integration
-- [x] Two-tier ranking system
-- [ ] Support for multiple search keywords
+- [x] Two-tier ranking system (⭐ / 💪)
+- [x] Bilingual workflows (EN / 中文)
+- [ ] Google Jobs support
 - [ ] Daily email digest
-- [ ] Indeed / StepStone support
+- [ ] StepStone / Indeed DE support
 - [ ] Docker deployment
 
 ## License
@@ -220,7 +239,7 @@ PRs welcome! If you find a bug or have a feature idea, open an issue first.
 
 ---
 
-*Built with [n8n Official Skills](https://github.com/n8n-io/skills) for workflow best practices.*
+*Built with [JobSpy](https://github.com/speedyapply/JobSpy) & [n8n Official Skills](https://github.com/n8n-io/skills).*
 
 ## Acknowledgments
 
