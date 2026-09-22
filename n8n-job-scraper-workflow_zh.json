@@ -1,5 +1,5 @@
 {
-  "name": "🤖 每日求职自动化 - LinkedIn + DeepSeek + Notion",
+  "name": "🤖 每日求职自动化 - BA/JobSpy + OpenCode + Notion",
   "nodes": [
     {
       "parameters": {
@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "29 12 * * *"
+              "expression": "0 7 * * 1-5"
             }
           ]
         }
@@ -53,16 +53,16 @@
         "assignments": {
           "assignments": [
             {
-              "id": "2105c2c1-0927-499b-a62e-806e3086a61d",
-              "name": "keywords",
-              "value": "QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test",
-              "type": "string"
+              "id": "a1000000-0000-4000-8000-000000000001",
+              "name": "searchConfig",
+              "type": "object",
+              "value": "{\"keywords\": \"QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test\", \"hours_old\": 24, \"max_total\": 30, \"sites\": [\"linkedin\", \"indeed\"], \"locations\": [[\"Munich, Germany\", 8], [\"Bavaria, Germany\", 3]], \"timeout_s\": 90, \"scraper_timeout_ms\": 330000, \"ba\": {\"enabled\": true, \"terms\": [\"Testautomatisierung\", \"Test Engineer\", \"QA Engineer\", \"Software Test\", \"HiL\", \"Embedded Software\", \"DevOps Engineer\"], \"location\": \"München\", \"radius_km\": 30, \"per_term\": 12, \"limit\": 22, \"detail_limit\": 22}}"
             },
             {
-              "id": "46d90fd1-c5f9-4baa-a41c-c80ee2c3b892",
-              "name": "location",
-              "value": "Munich, Germany",
-              "type": "string"
+              "id": "a1000000-0000-4000-8000-000000000002",
+              "name": "NotionDatabaseId",
+              "type": "string",
+              "value": "39ee7030-f79a-8071-a8ef-dfa9a1ecba1a"
             }
           ]
         },
@@ -87,29 +87,37 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": []
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.searchConfig }}",
         "options": {
-          "timeout": 180000
+          "timeout": 340000
         }
       },
       "id": "eeecd37e-bed3-4140-b674-1bfc25a4e03b",
-      "name": "🌐 抓取 LinkedIn 岗位",
+      "name": "🌐 抓取岗位 (BA + LinkedIn/Indeed)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         -134368,
         -7216
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "notes": "POSTs the search config to the local scraper bridge (scraper_server.js -> scrape_jobs.py). Sources: Bundesagentur fuer Arbeit Jobsuche v6 (primary) + LinkedIn/Indeed via JobSpy."
     },
     {
       "parameters": {
-        "jsCode": "// HTTP 响应：{ count: N, jobs: [...] }\nconst data = typeof $json === 'string' ? JSON.parse($json) : $json;\nconst jobs = data?.jobs || data || [];\n\nif (!Array.isArray(jobs) || jobs.length === 0) return [];\n\n// 过滤掉实习/学生岗位\nconst BAN = [/student/i, /intern/i, /werkstudent/i, /praktikant/i, /thesis/i, /masterarbeit/i, /bachelorarbeit/i];\nconst seen = new Set();\nconst result = [];\nfor (const j of jobs) {\n  const hay = ((j.title||'') + ' ' + (j.company||'')).toLowerCase();\n  if (BAN.some(re => re.test(hay))) continue;\n  const key = (j.title||'') + '|' + (j.company||'');\n  if (seen.has(key)) continue;\n  seen.add(key);\n  result.push({\n    jobId: j.jobId || '',\n    title: j.title || '',\n    company: j.company || '',\n    location: j.location || '',\n    link: j.fullLink || '',\n    description: j.description || '',\n    postedTime: j.postedTime || new Date().toISOString(),\n    fullLink: j.fullLink || `https://www.linkedin.com/jobs/view/${j.jobId}/`\n  });\n}\nreturn [{ jobs: result }];"
+        "jsCode": "// Pipeline gate: drop internships/students, then everything defence/military.\n// Two independent layers: company blocklist + text signals (title + description).\nconst data = typeof $json === 'string' ? JSON.parse($json) : $json;\nconst jobs = (data && data.jobs) || [];\nconst srcStats = (data && data.stats) || {};\n\nconst STUDENT = [/student/i, /intern(ship)?\\b/i, /werkstudent/i, /praktik(ant|um)/i,\n                 /thesis/i, /(bachelor|master)arbeit/i, /ausbildung/i, /dual(es)? studium/i, /\\bhiwi\\b/i];\n\n// Companies whose roles are military/defence by definition (citizenship-restricted work).\nconst DEFENSE_COMPANY = [\n  /rheinmetall/i, /diehl\\b/i, /hensoldt/i, /knds/i, /krauss-?maffei/i, /wegmann/i, /mbda/i,\n  /thales/i, /airbus\\s*(defence|ds|defense)/i, /leonardo\\s*(drs|defence|uk)?/i, /lockheed/i,\n  /raytheon|\\brtx\\b/i, /northrop/i, /\\bbae\\s*systems/i, /elbit/i, /l3harris/i, /boeing\\s*(defence|defense)/i,\n  /saab\\s*(ab| defence| bofors)/i, /kongsberg/i, /anduril/i, /helsing/i, /arx\\s*robotics/i,\n  /quantum-?systems/i, /stark\\s*(defence|defense)/i, /donaustahl/i, /bundeswehr/i, /\\bbwi\\b/i,\n  /\\biabg\\b/i, /\\besg\\s*(elektronik|gmbh)?/i, /gds?els/i, /iveco\\s*defence/i, /airborne\\s*technologies/i,\n  /ffg\\s*(gmbh)?|flensburger\\s*fahrzeugbau/i, /gl\\s*group|global\\s*clearance/i, /patria\\b/i,\n  /naval\\s*group/i, /fincantieri/i, /exail/i, /arex\\b/i, /whitehead\\s*alenia/i, /deutsche\\s*panzer/i,\n  /general\\s*dynamics/i, /leidos/i, /caci\\b/i, /booz\\s*allen/i, /mitre\\b/i, /qinetiq/i,\n  /thielert|ontime-?defence/i, /simumatik/i,\n];\n// Text signals: military/defence context or citizenship/clearance gating.\nconst DEFENSE_TEXT = [\n  /\\bdefence\\b|\\bdefense\\b/i, /military|militar/i, /wehrtechnik|wehrtechnisch/i,\n  /verteidigung|rüstung|rustung/i, /\\bbundeswehr\\b/i, /\\bnato\\b/i, /\\bitar\\b/i,\n  /security\\s*clearance|sicherheitsüberprüf|sicherheitsueberpruef|erweitertes?\\s*führungszeugnis/i,\n  /\\b(ü2|ue2|ü3|ue3|sü2|su2|vs-nfd)\\b/i, /staatsbürgerschaft|staatsangehörig|citizenship/i,\n  /geheim(?!nis)|classified|streng\\s*vertraulich/i, /mil-?std|milspec/i,\n  /waffensystem|weapon\\s*system|munition|\\bmissile\\b|\\brakete\\b|panzer\\b|fregatte/i,\n  /luftverteidigung|air\\s*defence|air\\s*defense/i, /radar\\s*(system|technolog)/i,\n  /unbemannte?\\s*(system|luftfahrzeug)|\\buav\\b|\\bdrone\\s*(defence|defense|war)/i,\n  /\\bc4isr\\b|\\bc2\\s*system/i, /soldat(en)?\\b|troop/i, /verteidigungsministerium|ministry\\s*of\\s*defence/i,\n];\n\nconst stats = {\n  raw: jobs.length, droppedStudent: 0, droppedDefense: 0, droppedOther: 0,\n  defenseExamples: [], statusBySource: {},\n  sources: srcStats, errors: (srcStats && srcStats.errors) || [],\n};\nconst seenKeys = new Set();\nconst result = [];\n\nfor (const job of jobs) {\n  const title = (job.title || '').trim();\n  const company = (job.company || '').trim();\n  const desc = (job.description || '').trim();\n  const hay = (title + ' ' + company + ' ' + desc).toLowerCase();\n  stats.statusBySource[job.site || 'unknown'] = (stats.statusBySource[job.site || 'unknown'] || 0) + 1;\n\n  if (!title || !job.fullLink) { stats.droppedOther++; continue; }\n  if (STUDENT.some(re => re.test(title + ' ' + company))) { stats.droppedStudent++; continue; }\n\n  const companyHit = DEFENSE_COMPANY.find(re => re.test(company));\n  const textHit = DEFENSE_TEXT.find(re => re.test(title + ' ' + company + ' ' + desc));\n  if (companyHit || textHit) {\n    stats.droppedDefense++;\n    if (stats.defenseExamples.length < 6) {\n      stats.defenseExamples.push(`${title} @ ${company} (${(companyHit || textHit).source.slice(0, 32)})`);\n    }\n    continue;\n  }\n\n  const key = title.toLowerCase() + '|' + company.toLowerCase();\n  if (seenKeys.has(key)) { stats.droppedOther++; continue; }\n  seenKeys.add(key);\n\n  result.push({\n    jobId: job.jobId || '',\n    title,\n    company,\n    location: job.location || '',\n    link: job.fullLink || '',\n    fullLink: job.fullLink || '',\n    site: job.site || '',\n    description: (desc || title).slice(0, 3000),\n    postedTime: job.postedTime || new Date().toISOString(),\n  });\n}\nstats.kept = result.length;\nreturn [{ jobs: result, stats: stats }];\n"
       },
       "id": "aad05702-4158-4c78-a454-6d43831facb4",
       "name": "📋 解析岗位列表",
@@ -118,7 +126,8 @@
       "position": [
         -134160,
         -7216
-      ]
+      ],
+      "notes": "Internship/student filter + defence/military filter (company blocklist + text signals) + dedupe; emits {jobs, stats}."
     },
     {
       "parameters": {
@@ -150,7 +159,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const cvContext = $node['📄 结构化 CV 文本'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji});\n\nconst prompt = `你是一个专业的招聘匹配顾问。请根据候选人的CV和岗位信息评估匹配度。\n\n## 原始数据（请原样返回）\n__META__${meta}__META_END__\n\n${cvContext}\n\n### 岗位信息\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### 评分标准\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | 领域/行业匹配度：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | 技能重叠度：对比CV和岗位描述中的技术栈、工具、方法论。匹配项越多、深度越深分数越高 |\n| experience_relevance | 0-25 | 经验相关性：候选人的项目/工作经历是否与岗位职责和要求匹配。考虑相关性和经验深度 |\n| seniority | 0-10 | 资历匹配：10=完美匹配当前经验层级；5=中等；0=完全不匹配 |\n| language_requirement | 0-10 | 语言要求：10=岗位接受候选人的语言能力（德语C1+英语C1）；5=部分匹配；0=不匹配 |\n| location_match | 0-10 | 地点匹配 |\n| bonus | 0-10 | 公司声誉、发展前景、福利待遇 |：10=慕尼黑或周边30km；8=巴伐利亚州/Hybrid；5=德国其他/Remote；0=国外 |\n\n总分 overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match + bonus\n- Automotive 行业: background_match 扣 5 分\n\n- Defense/Aerospace/国防 行业的岗位已被自动化过滤，不会出现在结果中\n\n### 推荐分类\n- overall >= 75 → \"高度符合\"\n- overall >= 60 → \"可以尝试\"\n- overall < 60 → \"不适合\"\n\n### 输出格式（严格JSON，不要额外内容）\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10, \"bonus\": 6 },\n  \"recommendation\": \"高度符合\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"简短匹配理由\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
+        "jsCode": "const cvContext = $node['📄 结构化 CV 文本'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\nconst si = (job.site || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji,site:si});\n\nconst prompt = `你是一个专业的招聘匹配顾问。请根据候选人的CV和岗位信息评估匹配度。\n\n## 原始数据（请原样返回）\n__META__${meta}__META_END__\n\n${cvContext}\n\n### 岗位信息\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### 评分标准\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | 领域/行业匹配度：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | 技能重叠度：对比CV和岗位描述中的技术栈、工具、方法论。匹配项越多、深度越深分数越高 |\n| experience_relevance | 0-25 | 经验相关性：候选人的项目/工作经历是否与岗位职责和要求匹配。考虑相关性和经验深度 |\n| seniority | 0-10 | 资历匹配：10=完美匹配当前经验层级；5=中等；0=完全不匹配 |\n| language_requirement | 0-10 | 语言要求：10=岗位接受候选人的语言能力（德语C1+英语C1）；5=部分匹配；0=不匹配 |\n| location_match | 0-10 | 地点匹配 |\n| bonus | 0-10 | 公司声誉、发展前景、福利待遇 |：10=慕尼黑或周边30km；8=巴伐利亚州/Hybrid；5=德国其他/Remote；0=国外 |\n\n总分 overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match + bonus\n- Automotive 行业: background_match 扣 5 分\n\n- Defense/Aerospace/国防 行业的岗位已被自动化过滤，不会出现在结果中\n\n### 推荐分类\n- overall >= 75 → \"高度符合\"\n- overall >= 60 → \"可以尝试\"\n- overall < 60 → \"不适合\"\n\n### 输出格式（严格JSON，不要额外内容）\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10, \"bonus\": 6 },\n  \"recommendation\": \"高度符合\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"简短匹配理由\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
       },
       "id": "cc076848-1926-4849-8489-310f4a6449db",
       "name": "✍️ 准备打分 Prompt",
@@ -159,7 +168,8 @@
       "position": [
         -133488,
         -7216
-      ]
+      ],
+      "notes": "Builds the scoring prompt; _meta carries title/company/link/location/postedTime/jobId/site."
     },
     {
       "parameters": {
@@ -237,6 +247,10 @@
             {
               "key": "Match Reason|rich_text",
               "textContent": "={{ $json.reason }}"
+            },
+            {
+              "key": "Notes|rich_text",
+              "textContent": "={{ `来源 ${$json.site || '?'} · 技能 ${$json.skillMatch}/10 · 行业 ${$json.industryMatch}/10 · 资历 ${$json.levelMatch}/10 · 地点 ${$json.locationMatch}/10 · 语言 ${$json.languageMatch}/10` }}"
             }
           ]
         },
@@ -333,6 +347,10 @@
             {
               "key": "Match Reason|rich_text",
               "textContent": "={{ $json.reason }}"
+            },
+            {
+              "key": "Notes|rich_text",
+              "textContent": "={{ `来源 ${$json.site || '?'} · 技能 ${$json.skillMatch}/10 · 行业 ${$json.industryMatch}/10 · 资历 ${$json.levelMatch}/10 · 地点 ${$json.locationMatch}/10 · 语言 ${$json.languageMatch}/10` }}"
             }
           ]
         },
@@ -366,7 +384,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 第二道关卡：即使模型放行了军工/国防岗位，也在这里判 0 分丢弃\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = '不适合'; ml = '❌ 不适合（军工/国防）'; }\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
       "id": "0d7b7ab1-d89e-4a57-b603-d9902b918660",
       "name": "📊 解析评分结果",
@@ -375,11 +393,12 @@
       "position": [
         -132832,
         -7216
-      ]
+      ],
+      "notes": "Parses the OpenCode Go response; zero-scores anything the model still classifies as defence/military so it can never reach Notion."
     },
     {
       "parameters": {
-        "jsCode": "// 所有岗位打分完毕，排序+去重+Top10\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nreturn items.slice(0, 10).map(i => i.json);"
+        "jsCode": "// Sort scored jobs, count how many get written, keep the top 10 for Notion.\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nconst scored = items.length;\nconst keep = items.slice(0, 10);\nconst above = keep.filter(i => (i.json.score || 0) >= 6).length;\nreturn keep.map((i, idx) => ({\n  ...i.json,\n  _rank: idx + 1,\n  _scoredTotal: scored,\n  _writtenEstimate: above,\n  _top: items[0] ? `${items[0].json.title} @ ${items[0].json.company} (${items[0].json.score})` : '',\n}));\n"
       },
       "id": "e6fd68ce-6d8b-476f-a866-982f77a66446",
       "name": "📊 排序+Top10",
@@ -471,6 +490,247 @@
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
       "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4-flash. Requires x-opencode-session header + browser UA, otherwise 400/403."
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "39ee7030-f79a-8071-a8ef-dfa9a1ecba1a",
+          "mode": "list",
+          "cachedResultName": "Job Recommendations",
+          "cachedResultUrl": "https://app.notion.com/p/39ee7030f79a8071a8efdfa9a1ecba1a"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -133936,
+        -7216
+      ],
+      "id": "b2000000-0000-4000-8000-000000000001",
+      "name": "📥 读取 Notion 已有岗位",
+      "credentials": {
+        "notionApi": {
+          "id": "tcd5imju5iIX4ZPN",
+          "name": "Notion account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Reads existing recommendations so already-seen postings are skipped (fail-open: if Notion is down, the run continues)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cross-run dedupe: drop postings that are already in the Notion database.\n// NOTE: n8n's Notion node flattens properties to `property_<name>` keys (property_link,\n// property_job_title, ...) and `url` is the Notion page URL - so scan every nested value.\nconst existing = new Set();\nconst existingIds = new Set();\n\nconst norm = (u) => String(u || '').split('?')[0].replace(/\\/+$/, '').toLowerCase();\nconst harvest = (v, urls, ids, depth = 0) => {\n  if (v === null || v === undefined || depth > 6) return;\n  if (typeof v === 'string') {\n    if (/^https?:\\/\\//i.test(v)) urls.push(v);\n    else if (/^[a-z]+:[^\\s]{6,}$/.test(v)) ids.push(v);\n    return;\n  }\n  if (typeof v !== 'object') return;\n  if (Array.isArray(v)) { v.forEach(x => harvest(x, urls, ids, depth + 1)); return; }\n  for (const [k, val] of Object.entries(v)) {\n    if (/job_?id|refnr|referenz/i.test(k) && typeof val === 'string') ids.push(val);\n    harvest(val, urls, ids, depth + 1);\n  }\n};\n\nlet rows = 0;\nfor (const item of $input.all()) {\n  const j = item.json || {};\n  if (!Object.keys(j).length) continue;               // alwaysOutputData placeholder row\n  rows++;\n  const urls = [], ids = [];\n  harvest(j, urls, ids);\n  for (const u of urls) {\n    existing.add(norm(u));\n    const li = u.match(/\\/jobs\\/view\\/(\\d+)/);\n    if (li) existingIds.add('linkedin:' + li[1]);\n    const ba = u.match(/jobdetail\\/([^/?#]+)/);\n    if (ba) existingIds.add('ba:' + decodeURIComponent(ba[1]));\n    const baRef = u.match(/(\\d{3,6}-\\d{6,12}-S)/);\n    if (baRef) existingIds.add('ba:' + baRef[1]);\n  }\n  for (const i of ids) existingIds.add(String(i).trim());\n}\n\nconst upstream = $('📋 解析岗位列表').first().json;\nconst jobs = upstream.jobs || [];\nconst stats = Object.assign({}, upstream.stats || {});\nconst fresh = [];\nconst skipped = [];\n\nfor (const job of jobs) {\n  const link = norm(job.fullLink);\n  const jid = job.jobId || '';\n  const dup = (link && existing.has(link)) || (jid && existingIds.has(jid));\n  if (dup) { skipped.push(job.title + ' @ ' + job.company); continue; }\n  fresh.push(job);\n}\nstats.alreadyInNotion = skipped.length;\nstats.existingRows = rows;\nstats.newJobs = fresh.length;\nstats.skippedExamples = skipped.slice(0, 5);\nreturn [{ jobs: fresh, stats: stats }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -133712,
+        -7216
+      ],
+      "id": "b2000000-0000-4000-8000-000000000002",
+      "name": "🔁 过滤已存在",
+      "notes": "Dedupe against the Notion database (by link + jobId) so a job is only ever recommended once."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.cvText }}",
+              "rightValue": "CV 读取失败",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -134592,
+        -7312
+      ],
+      "id": "c3000000-0000-4000-8000-000000000002",
+      "name": "🛡️ CV 有效性检查",
+      "notes": "Abort loudly instead of scoring every job against a broken CV."
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -134368,
+        -7088
+      ],
+      "id": "c3000000-0000-4000-8000-000000000003",
+      "name": "📵 CV 读取失败"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -134144,
+        -6928
+      ],
+      "id": "c3000000-0000-4000-8000-000000000004",
+      "name": "❌ 抓取失败",
+      "notes": "Error output of the scraper node (bridge down / scrape failed). Checked by the error workflow + Telegram."
+    },
+    {
+      "parameters": {
+        "chatId": "700904608",
+        "text": "={{ (() => {\n  const st = $('🔁 过滤已存在').first().json.stats || {};\n  const w = $('📊 排序+Top10').first().json || {};\n  const src = st.sources || {};\n  const errs = (st.errors || []).slice(0, 3);\n  const lines = [\n    '🤖 求职自动化完成',\n    `抓取 ${st.raw || 0} 个岗位 (BA ${src.arbeitsagentur || 0} / LinkedIn ${src.linkedin || 0} / Indeed ${src.indeed || 0})`,\n    `过滤：实习/学生 ${st.droppedStudent || 0} · 军工国防 ${st.droppedDefense || 0}`,\n    `Notion 已存在跳过 ${st.alreadyInNotion || 0}`,\n    `本次新岗位 ${st.newJobs || 0} → 打分完成 → 入库 ${w.written || '?'} 条`,\n  ];\n  if (w.top) lines.push('最高分：' + w.top);\n  if (st.defenseExamples && st.defenseExamples.length) lines.push('已跳过(军工示例)：' + st.defenseExamples.slice(0, 3).join(' | '));\n  if (errs.length) lines.push('⚠️ 抓取告警：' + errs.join(' | '));\n  return lines.join('\\n');\n})() }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -132176,
+        -7024
+      ],
+      "id": "c3000000-0000-4000-8000-000000000005",
+      "name": "📣 Telegram 运行摘要",
+      "credentials": {
+        "telegramApi": {
+          "id": "tgJobTracker001",
+          "name": "Telegram (Job Tracker)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Run summary; also the smoke signal that the daily automation actually ran."
+    },
+    {
+      "parameters": {
+        "chatId": "700904608",
+        "text": "⚠️ 求职自动化中止：CV.pdf 读取失败，请检查 cv/CV.pdf 是否存在。",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -134144,
+        -7088
+      ],
+      "id": "c3000000-0000-4000-8000-000000000006",
+      "name": "📵 Telegram: CV 读取失败",
+      "credentials": {
+        "telegramApi": {
+          "id": "tgJobTracker001",
+          "name": "Telegram (Job Tracker)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Run summary; also the smoke signal that the daily automation actually ran."
+    },
+    {
+      "parameters": {
+        "content": "## 1. 读取 CV\npdf → 文本 → 校验（读不到就报警中止）",
+        "height": 200,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -135280,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 1"
+    },
+    {
+      "parameters": {
+        "content": "## 2. 抓取岗位\n配置在 `🔍 搜索参数配置`（唯一来源）→ 本地桥 localhost:3456\n主源：Bundesagentur für Arbeit Jobsuche v6（免费、稳定）\n补源：JobSpy → LinkedIn / Indeed（易被限流）",
+        "height": 220,
+        "width": 520,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -134400,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 2"
+    },
+    {
+      "parameters": {
+        "content": "## 3. 过滤 + 去重\n实习/学生 → 军工国防（公司黑名单 + 文本信号）→ Notion 已存在",
+        "height": 200,
+        "width": 620,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -134192,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 3"
+    },
+    {
+      "parameters": {
+        "content": "## 4. 打分（OpenCode Go → DeepSeek V4 Flash）\n逐岗位调用，失败重试 3 次；分数 <6 丢弃",
+        "height": 170,
+        "width": 560,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -133520,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 4"
+    },
+    {
+      "parameters": {
+        "content": "## 5. 写入 Notion + 摘要\nTop 10，按 7.5 / 6 分档；末尾发 Telegram 运行摘要",
+        "height": 170,
+        "width": 560,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -132208,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 5"
     }
   ],
   "pinData": {},
@@ -479,7 +739,7 @@
       "main": [
         [
           {
-            "node": "🌐 抓取 LinkedIn 岗位",
+            "node": "🌐 抓取岗位 (BA + LinkedIn/Indeed)",
             "type": "main",
             "index": 0
           }
@@ -504,22 +764,11 @@
         ]
       ]
     },
-    "🌐 抓取 LinkedIn 岗位": {
-      "main": [
-        [
-          {
-            "node": "📋 解析岗位列表",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "📋 解析岗位列表": {
       "main": [
         [
           {
-            "node": "✂️ 拆分岗位条目",
+            "node": "📥 读取 Notion 已有岗位",
             "type": "main",
             "index": 0
           }
@@ -603,6 +852,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "📣 Telegram 运行摘要",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -665,7 +921,7 @@
       "main": [
         [
           {
-            "node": "🔍 搜索参数配置",
+            "node": "🛡️ CV 有效性检查",
             "type": "main",
             "index": 0
           }
@@ -704,6 +960,75 @@
           }
         ]
       ]
+    },
+    "🌐 抓取岗位 (BA + LinkedIn/Indeed)": {
+      "main": [
+        [
+          {
+            "node": "📋 解析岗位列表",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ 抓取失败",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🛡️ CV 有效性检查": {
+      "main": [
+        [
+          {
+            "node": "🔍 搜索参数配置",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📵 CV 读取失败",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📵 CV 读取失败": {
+      "main": [
+        [
+          {
+            "node": "📵 Telegram: CV 读取失败",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 读取 Notion 已有岗位": {
+      "main": [
+        [
+          {
+            "node": "🔁 过滤已存在",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔁 过滤已存在": {
+      "main": [
+        [
+          {
+            "node": "✂️ 拆分岗位条目",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -711,7 +1036,8 @@
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false,
-    "timezone": "Europe/Berlin"
+    "timezone": "Europe/Berlin",
+    "errorWorkflow": "errWfJobTracker1"
   },
   "versionId": "ce9a7156-7a39-4678-b14b-d4ef94fe1108",
   "meta": {
@@ -721,5 +1047,5 @@
   "nodeGroups": [],
   "id": "CITsvLWCfUkmDEsT",
   "tags": [],
-  "description": "每日抓取 LinkedIn/Indeed（JobSpy，4 区域）岗位 → OpenCode Go 上的 DeepSeek V4 Flash 按 7 维度打分 → Top10 写入 Notion。"
+  "description": "每日抓取 Bundesagentur/JobSpy 岗位 → 过滤实习与军工国防 → 与 Notion 去重 → OpenCode Go 上的 DeepSeek V4 Flash 打分 → Top10 写入 Notion 并推送 Telegram 摘要。"
 }
