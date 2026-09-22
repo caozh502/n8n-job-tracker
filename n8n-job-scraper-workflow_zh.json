@@ -598,7 +598,7 @@
     },
     {
       "parameters": {
-        "chatId": "700904608",
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "={{ (() => {\n  const st = $('🔁 过滤已存在').first().json.stats || {};\n  const w = $('📊 排序+Top10').first().json || {};\n  const src = st.sources || {};\n  const errs = (st.errors || []).slice(0, 3);\n  const lines = [\n    '🤖 求职自动化完成',\n    `抓取 ${st.raw || 0} 个岗位 (BA ${src.arbeitsagentur || 0} / LinkedIn ${src.linkedin || 0} / Indeed ${src.indeed || 0})`,\n    `过滤：实习/学生 ${st.droppedStudent || 0} · 军工国防 ${st.droppedDefense || 0}`,\n    `Notion 已存在跳过 ${st.alreadyInNotion || 0}`,\n    `本次新岗位 ${st.newJobs || 0} → 打分完成 → 入库 ${w.written || '?'} 条`,\n  ];\n  if (w.top) lines.push('最高分：' + w.top);\n  if (st.defenseExamples && st.defenseExamples.length) lines.push('已跳过(军工示例)：' + st.defenseExamples.slice(0, 3).join(' | '));\n  if (errs.length) lines.push('⚠️ 抓取告警：' + errs.join(' | '));\n  return lines.join('\\n');\n})() }}",
         "additionalFields": {
           "appendAttribution": false
@@ -626,7 +626,7 @@
     },
     {
       "parameters": {
-        "chatId": "700904608",
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "⚠️ 求职自动化中止：CV.pdf 读取失败，请检查 cv/CV.pdf 是否存在。",
         "additionalFields": {
           "appendAttribution": false

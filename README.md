@@ -205,6 +205,11 @@ The bridge (`scraper_server.js`) only forwards this JSON to `scrape_jobs.py` —
 - **[OpenCode Go](https://opencode.ai/)** — serves DeepSeek V4 Flash for scoring
 - **[Notion API](https://developers.notion.com/)** — job database
 
+## Notes for the published files
+
+- The Telegram nodes in `n8n-job-scraper-workflow_zh.json` ship with a `YOUR_TELEGRAM_CHAT_ID` placeholder — put your own chat id in both Telegram nodes (or delete those nodes if you don't want notifications). The rest of the workflow is byte-identical to the working instance.
+- `n8n-job-scraper-workflow_zh.json` is the canonical, current workflow. `n8n-job-scraper-workflow_en.json` is the older pre-v2 English translation (single DeepSeek LangChain node, no BA source / defence filter / dedup) and is kept for reference only.
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
