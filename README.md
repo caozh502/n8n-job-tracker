@@ -11,7 +11,7 @@
 An n8n workflow that runs daily to:
 
 1. **🔍 Scrape** the latest job postings from LinkedIn (via [JobSpy](https://github.com/speedyapply/JobSpy) — 4 region searches: Munich, Bavaria, Baden-Württemberg, Germany-wide)  
-2. **🤖 Score** each job against your CV using DeepSeek LLM (7-dimension scoring: background, skills, experience, seniority, language, location, bonus)  
+2. **🤖 Score** each job against your CV using **DeepSeek V4 Flash served by OpenCode Go** (7-dimension scoring: background, skills, experience, seniority, language, location, bonus)  
 3. **📝 Save** the Top 10 matches to a Notion database with scores and match reasons
 
 **Key features:**
@@ -55,7 +55,7 @@ Both workflows are functionally identical. Import whichever suits your preferenc
 |-------------|----------------|
 | [Python](https://www.python.org/) | >= 3.10 |
 | [n8n](https://docs.n8n.io/hosting/installation/) | 2.30+ (self-hosted, npm install) |
-| [DeepSeek](https://platform.deepseek.com/) API Key | Paid account |
+| [OpenCode Go](https://opencode.ai/) API key | $10/mo subscription — serves `deepseek-v4-flash` (the scoring model) |
 | [Notion](https://www.notion.so/) Account | Free tier — create an internal integration |
 
 ## Quick Start
@@ -95,7 +95,7 @@ Open `http://localhost:5678` in your browser, then:
 
 | Credential | Type | What to enter |
 |-----------|------|---------------|
-| **DeepSeek** | `DeepSeek API` | Your DeepSeek API key |
+| **OpenCode Go** | `Bearer Auth` | Your OpenCode Go API key — consumed by the `🧠 OpenCode DeepSeek 打分` HTTP Request node |
 | **Notion** | `Notion API` | Internal Integration Token |
 
 ### 6. Import the Workflow
@@ -127,7 +127,7 @@ n8n-job-tracker/
 
 ## How the Scoring Works
 
-DeepSeek evaluates each job against your CV across **7 dimensions** (100 total):
+DeepSeek V4 Flash (via OpenCode Go) evaluates each job against your CV across **7 dimensions** (100 total):
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
@@ -205,13 +205,15 @@ n8n supports `$env.VAR_NAME` expressions. Copy `.env.example` to `.env` and conf
 | DeepSeek score is 0 | API key not configured | Check n8n credentials |
 | Notion page not created | API token / DB ID wrong | Verify Notion integration token |
 | `jobspy` module not found | Missing pip install | `pip install python-jobspy` |
+| opencode.ai returns `403 error code 1010` | Cloudflare blocks non-browser clients | Keep the `User-Agent` header on the LLM node |
+| opencode.ai returns `400 MissingSessionID` | `x-opencode-session` header missing | Keep that header on the LLM node |
 | Loop runs only once | SplitInBatches wiring | See n8n loops documentation |
 
 ## Tech Stack
 
 - **[n8n](https://n8n.io/)** — Workflow automation (self-hosted, free)
 - **[JobSpy](https://github.com/speedyapply/JobSpy)** — Python job scraper (LinkedIn + Indeed)
-- **[DeepSeek](https://platform.deepseek.com/)** — LLM for job scoring
+- **[OpenCode Go](https://opencode.ai/)** — serves **DeepSeek V4 Flash** for job scoring. Called through a plain HTTP Request node, because the OpenCode Go endpoint needs a `x-opencode-session` header and a browser `User-Agent` (the LangChain DeepSeek/OpenAI nodes can't send custom headers)
 - **[Notion API](https://developers.notion.com/)** — Job database storage
 
 ## Roadmap

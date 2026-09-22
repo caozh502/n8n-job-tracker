@@ -7,18 +7,18 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 7 * * 1-5"
+              "expression": "29 12 * * *"
             }
           ]
         }
       },
-      "id": "bf2aaf2e-6aec-495b-83d1-f547b5c496f6",
+      "id": "75ca551d-752d-4c6a-9087-52ef2d7aabec",
       "name": "⏰ 每日定时触发",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        100,
-        300
+        -135472,
+        -7216
       ]
     },
     {
@@ -26,26 +26,26 @@
         "operation": "pdf",
         "options": {}
       },
-      "id": "ee0462c8-145f-4a1d-91e9-57719962ddf7",
+      "id": "64ebd7b8-834f-45f3-b49b-ecc888187e35",
       "name": "📄 提取 PDF 文本",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        540,
-        300
+        -135040,
+        -7216
       ]
     },
     {
       "parameters": {
         "jsCode": "// Extract from File 输出文本在 $json.text 中\n// 不做复杂解析，直接输出纯文本作为 CV 信息\nconst rawText = $json.text || $json.data || '';\nif (!rawText) return [{ cvText: 'CV 读取失败，请确认 cv/CV.pdf 文件存在且可读' }];\n\n// 简单清理：去多余空白、截断过长的文本\nconst cleanText = rawText.replace(/\\s+/g, ' ').trim();\nconst maxLen = 30000;\nconst cvText = cleanText.length > maxLen ? cleanText.substring(0, maxLen) + '...' : cleanText;\n\nreturn [{ cvText: cvText }];"
       },
-      "id": "895626f6-538f-464b-885d-8ca902358e2a",
+      "id": "813d08f1-cc45-410f-aa22-ad719cc52005",
       "name": "📄 结构化 CV 文本",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        760,
-        300
+        -134816,
+        -7216
       ]
     },
     {
@@ -68,13 +68,13 @@
         },
         "options": {}
       },
-      "id": "28a1f042-9cd1-4baa-89ed-5caf5d7e7c2b",
+      "id": "5028529f-9d72-4ffe-ad77-b00e1402b013",
       "name": "🔍 搜索参数配置",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        980,
-        300
+        -134592,
+        -7216
       ]
     },
     {
@@ -98,26 +98,26 @@
           "timeout": 180000
         }
       },
-      "id": "fedaddb8-73ae-4210-9325-96fee94ed044",
+      "id": "eeecd37e-bed3-4140-b674-1bfc25a4e03b",
       "name": "🌐 抓取 LinkedIn 岗位",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1200,
-        300
+        -134368,
+        -7216
       ]
     },
     {
       "parameters": {
         "jsCode": "// HTTP 响应：{ count: N, jobs: [...] }\nconst data = typeof $json === 'string' ? JSON.parse($json) : $json;\nconst jobs = data?.jobs || data || [];\n\nif (!Array.isArray(jobs) || jobs.length === 0) return [];\n\n// 过滤掉实习/学生岗位\nconst BAN = [/student/i, /intern/i, /werkstudent/i, /praktikant/i, /thesis/i, /masterarbeit/i, /bachelorarbeit/i];\nconst seen = new Set();\nconst result = [];\nfor (const j of jobs) {\n  const hay = ((j.title||'') + ' ' + (j.company||'')).toLowerCase();\n  if (BAN.some(re => re.test(hay))) continue;\n  const key = (j.title||'') + '|' + (j.company||'');\n  if (seen.has(key)) continue;\n  seen.add(key);\n  result.push({\n    jobId: j.jobId || '',\n    title: j.title || '',\n    company: j.company || '',\n    location: j.location || '',\n    link: j.fullLink || '',\n    description: j.description || '',\n    postedTime: j.postedTime || new Date().toISOString(),\n    fullLink: j.fullLink || `https://www.linkedin.com/jobs/view/${j.jobId}/`\n  });\n}\nreturn [{ jobs: result }];"
       },
-      "id": "30b25845-6bbf-4c7f-b773-9313eec5cd93",
+      "id": "aad05702-4158-4c78-a454-6d43831facb4",
       "name": "📋 解析岗位列表",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1420,
-        300
+        -134160,
+        -7216
       ]
     },
     {
@@ -125,13 +125,13 @@
         "fieldToSplitOut": "jobs",
         "options": {}
       },
-      "id": "3235d128-3bc5-481b-90f1-3d80060acb03",
+      "id": "59559399-3d14-4573-823c-29ca612223e3",
       "name": "✂️ 拆分岗位条目",
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
-        1640,
-        300
+        -133936,
+        -7216
       ]
     },
     {
@@ -139,74 +139,27 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "c7335f4f-e15b-43d8-bf29-16ed8c57d58b",
+      "id": "69b1b667-4a2b-44b4-8048-9da1f1187729",
       "name": "🔄 逐岗位处理",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        1860,
-        300
+        -133712,
+        -7216
       ]
     },
     {
       "parameters": {
         "jsCode": "const cvContext = $node['📄 结构化 CV 文本'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji});\n\nconst prompt = `你是一个专业的招聘匹配顾问。请根据候选人的CV和岗位信息评估匹配度。\n\n## 原始数据（请原样返回）\n__META__${meta}__META_END__\n\n${cvContext}\n\n### 岗位信息\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### 评分标准\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | 领域/行业匹配度：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | 技能重叠度：对比CV和岗位描述中的技术栈、工具、方法论。匹配项越多、深度越深分数越高 |\n| experience_relevance | 0-25 | 经验相关性：候选人的项目/工作经历是否与岗位职责和要求匹配。考虑相关性和经验深度 |\n| seniority | 0-10 | 资历匹配：10=完美匹配当前经验层级；5=中等；0=完全不匹配 |\n| language_requirement | 0-10 | 语言要求：10=岗位接受候选人的语言能力（德语C1+英语C1）；5=部分匹配；0=不匹配 |\n| location_match | 0-10 | 地点匹配 |\n| bonus | 0-10 | 公司声誉、发展前景、福利待遇 |：10=慕尼黑或周边30km；8=巴伐利亚州/Hybrid；5=德国其他/Remote；0=国外 |\n\n总分 overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match + bonus\n- Automotive 行业: background_match 扣 5 分\n\n- Defense/Aerospace/国防 行业的岗位已被自动化过滤，不会出现在结果中\n\n### 推荐分类\n- overall >= 75 → \"高度符合\"\n- overall >= 60 → \"可以尝试\"\n- overall < 60 → \"不适合\"\n\n### 输出格式（严格JSON，不要额外内容）\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10, \"bonus\": 6 },\n  \"recommendation\": \"高度符合\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"简短匹配理由\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
       },
-      "id": "7b21a994-a923-4aca-88aa-f7d97928458c",
+      "id": "cc076848-1926-4849-8489-310f4a6449db",
       "name": "✍️ 准备打分 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2080,
-        300
+        -133488,
+        -7216
       ]
-    },
-    {
-      "parameters": {
-        "prompt": "={{ $json.prompt }}",
-        "messages": {
-          "messageValues": [
-            {
-              "message": "你是一个招聘匹配专家。严格按照要求的 JSON 格式输出，只输出 JSON，不要任何额外内容。"
-            },
-            {
-              "type": "HumanMessagePromptTemplate",
-              "message": "={{ $json.prompt }}"
-            }
-          ]
-        }
-      },
-      "id": "b737ccfb-1b86-49c8-aceb-3a3c1cc751cc",
-      "name": "🧠 LLM Chain - 匹配打分",
-      "type": "n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1,
-      "position": [
-        2300,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "model": "deepseek-v4-flash",
-        "options": {
-          "maxTokens": 3000,
-          "temperature": 0.3
-        }
-      },
-      "id": "f062a2c5-0b7c-4cb7-baed-e4c564cf311a",
-      "name": "🧠 DeepSeek Chat Model",
-      "type": "n8n-nodes-langchain.lmChatDeepSeek",
-      "typeVersion": 1,
-      "position": [
-        2520,
-        500
-      ],
-      "credentials": {
-        "deepSeekApi": {
-          "id": "NXItNfVcOMfUJ3kd",
-          "name": "DeepSeek account"
-        }
-      }
     },
     {
       "parameters": {
@@ -232,13 +185,13 @@
         },
         "options": {}
       },
-      "id": "2974557b-8c82-4955-9a50-dab7a9551f76",
+      "id": "062c3ed0-c58c-408c-8edc-003cffefd4f0",
       "name": "🔝 第一关: 高度符合 (≥7.5)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        3400,
-        300
+        -132176,
+        -7216
       ]
     },
     {
@@ -289,13 +242,13 @@
         },
         "options": {}
       },
-      "id": "fb2452dc-abd4-4f8a-8c4a-6cb8f11316e9",
+      "id": "c66fd3a4-b9e9-4b2e-bd0e-3ac698c8ffe5",
       "name": "📝 Notion: ⭐ 高度符合",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        3620,
-        200
+        -131952,
+        -7312
       ],
       "credentials": {
         "notionApi": {
@@ -328,13 +281,13 @@
         },
         "options": {}
       },
-      "id": "ef90df83-1c73-4b17-944f-dfe36c628d71",
+      "id": "017d1817-537c-4ae7-9020-fb848d0a9bce",
       "name": "🔝 第二关: 可以尝试 (≥6)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        3840,
-        370
+        -131728,
+        -7136
       ]
     },
     {
@@ -385,13 +338,13 @@
         },
         "options": {}
       },
-      "id": "7095c130-c90d-401c-9e5a-e239fc25a929",
+      "id": "eb3356da-1c37-48af-82ed-a8582597a821",
       "name": "📝 Notion: 💪 可以尝试",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        4060,
-        370
+        -131520,
+        -7136
       ],
       "credentials": {
         "notionApi": {
@@ -402,39 +355,39 @@
     },
     {
       "parameters": {},
-      "id": "a6ac6ea2-36b7-4490-8178-3cbbb9dea6af",
+      "id": "7e7f977e-ddfe-4c5f-a4a1-90719bb77eb6",
       "name": "⏭️ 跳过不适合 (<6)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        4280,
-        490
+        -131296,
+        -7024
       ]
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
-      "id": "f0cdb27d-6e68-471f-9473-49d4f343e486",
+      "id": "0d7b7ab1-d89e-4a57-b603-d9902b918660",
       "name": "📊 解析评分结果",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2740,
-        300
+        -132832,
+        -7216
       ]
     },
     {
       "parameters": {
         "jsCode": "// 所有岗位打分完毕，排序+去重+Top10\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nreturn items.slice(0, 10).map(i => i.json);"
       },
-      "id": "b91c112a-5c97-4924-9f39-4d7bcb785be2",
+      "id": "e6fd68ce-6d8b-476f-a866-982f77a66446",
       "name": "📊 排序+Top10",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2960,
-        300
+        -132608,
+        -7216
       ]
     },
     {
@@ -442,13 +395,13 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "bc9b2fad-811d-4a0d-b382-3600ed074bab",
+      "id": "1899e386-dfe3-4678-a598-4027a46a7e68",
       "name": "🔄 逐条写入Notion",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        3180,
-        300
+        -132400,
+        -7216
       ]
     },
     {
@@ -459,11 +412,65 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        320,
-        300
+        -135248,
+        -7216
       ],
-      "id": "176484f3-9007-4991-8418-6d035ffc05d9",
+      "id": "7933fd8b-019f-4c2f-9eca-d1949797a63a",
       "name": "📄 读取 CV.pdf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://opencode.ai/zen/go/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-opencode-session",
+              "value": "n8n-job-tracker"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'deepseek-v4-flash', messages: [ { role: 'system', content: \"你是一个招聘匹配专家。严格按照要求的 JSON 格式输出，只输出 JSON，不要任何额外内容。\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, stream: false } }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -133280,
+        -7216
+      ],
+      "id": "8f1c2ab6-77d4-4c31-9c6e-3a5b1d9e04aa",
+      "name": "🧠 OpenCode DeepSeek 打分",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "okGoBearer01n8n",
+          "name": "OpenCode Go (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4-flash. Requires x-opencode-session header + browser UA, otherwise 400/403."
     }
   ],
   "pinData": {},
@@ -519,17 +526,6 @@
         ]
       ]
     },
-    "🧠 DeepSeek Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "🧠 LLM Chain - 匹配打分",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "✂️ 拆分岗位条目": {
       "main": [
         [
@@ -545,18 +541,7 @@
       "main": [
         [
           {
-            "node": "🧠 LLM Chain - 匹配打分",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🧠 LLM Chain - 匹配打分": {
-      "main": [
-        [
-          {
-            "node": "📊 解析评分结果",
+            "node": "🧠 OpenCode DeepSeek 打分",
             "type": "main",
             "index": 0
           }
@@ -708,13 +693,25 @@
           }
         ]
       ]
+    },
+    "🧠 OpenCode DeepSeek 打分": {
+      "main": [
+        [
+          {
+            "node": "📊 解析评分结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timezone": "Europe/Berlin"
   },
   "versionId": "ce9a7156-7a39-4678-b14b-d4ef94fe1108",
   "meta": {
@@ -723,5 +720,6 @@
   },
   "nodeGroups": [],
   "id": "CITsvLWCfUkmDEsT",
-  "tags": []
+  "tags": [],
+  "description": "每日抓取 LinkedIn/Indeed（JobSpy，4 区域）岗位 → OpenCode Go 上的 DeepSeek V4 Flash 按 7 维度打分 → Top10 写入 Notion。"
 }

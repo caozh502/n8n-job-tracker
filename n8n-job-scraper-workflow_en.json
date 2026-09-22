@@ -164,53 +164,6 @@
     },
     {
       "parameters": {
-        "prompt": "={{ $json.prompt }}",
-        "messages": {
-          "messageValues": [
-            {
-              "message": "你是一个Recruitment matching expert. Output strictly in JSON format as requested, no extra content."
-            },
-            {
-              "type": "HumanMessagePromptTemplate",
-              "message": "={{ $json.prompt }}"
-            }
-          ]
-        }
-      },
-      "id": "9d52b46e-6b22-4c8d-a3a6-fd9d21b239dd",
-      "name": "🧠 LLM Chain - Score Match",
-      "type": "n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1,
-      "position": [
-        2300,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "model": "deepseek-v4-flash",
-        "options": {
-          "maxTokens": 3000,
-          "temperature": 0.3
-        }
-      },
-      "id": "8c3b6519-b54e-433c-bf63-392bdbc4cd90",
-      "name": "🧠 DeepSeek Chat Model",
-      "type": "n8n-nodes-langchain.lmChatDeepSeek",
-      "typeVersion": 1,
-      "position": [
-        2520,
-        500
-      ],
-      "credentials": {
-        "deepSeekApi": {
-          "id": "NXItNfVcOMfUJ3kd",
-          "name": "DeepSeek account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -414,7 +367,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'Unfit', industry:'Other', reason:'Parse failed', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Highly Match';\n  else if (overall >= 60) r = 'Can Try';\n  else r = 'Unfit';\n}\n\nlet ml = '';\nif (r === 'Highly Match') ml = '⭐ Highly Match';\nelse if (r === 'Can Try') ml = '💪 Can Try';\nelse ml = '❌ Unfit';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'Unfit', industry:'Other', reason:'Parse failed', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Highly Match';\n  else if (overall >= 60) r = 'Can Try';\n  else r = 'Unfit';\n}\n\nlet ml = '';\nif (r === 'Highly Match') ml = '⭐ Highly Match';\nelse if (r === 'Can Try') ml = '💪 Can Try';\nelse ml = '❌ Unfit';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
       "id": "c701e95c-9f53-4ae3-a8be-8d2fad516833",
       "name": "📊 Parse Score Result",
@@ -465,6 +418,60 @@
       ],
       "id": "57cbb67f-2648-472a-b6d1-9da36223c1a2",
       "name": "📄 Read CV.pdf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://opencode.ai/zen/go/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-opencode-session",
+              "value": "n8n-job-tracker"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'deepseek-v4-flash', messages: [ { role: 'system', content: \"你是一个招聘匹配专家。严格按照要求的 JSON 格式输出，只输出 JSON，不要任何额外内容。\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, stream: false } }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        300
+      ],
+      "id": "8f1c2ab6-77d4-4c31-9c6e-3a5b1d9e04ab",
+      "name": "🧠 OpenCode DeepSeek Scoring",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "okGoBearer01n8n",
+          "name": "OpenCode Go (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4-flash. Requires x-opencode-session header + browser UA, otherwise 400/403."
     }
   ],
   "pinData": {},
@@ -520,17 +527,6 @@
         ]
       ]
     },
-    "🧠 DeepSeek Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "🧠 LLM Chain - Score Match",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "✂️ Split Items": {
       "main": [
         [
@@ -546,18 +542,7 @@
       "main": [
         [
           {
-            "node": "🧠 LLM Chain - Score Match",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🧠 LLM Chain - Score Match": {
-      "main": [
-        [
-          {
-            "node": "📊 Parse Score Result",
+            "node": "🧠 OpenCode DeepSeek Scoring",
             "type": "main",
             "index": 0
           }
@@ -709,6 +694,17 @@
           }
         ]
       ]
+    },
+    "🧠 OpenCode DeepSeek Scoring": {
+      "main": [
+        [
+          {
+            "node": "📊 Parse Score Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -724,5 +720,6 @@
   },
   "nodeGroups": [],
   "id": "CITsvLWCfUkmDEsT",
-  "tags": []
+  "tags": [],
+  "description": "Daily job search: scrape LinkedIn/Indeed (JobSpy, 4 regions) → score each posting with DeepSeek V4 Flash on OpenCode Go (7 dimensions) → write Top 10 to Notion."
 }
