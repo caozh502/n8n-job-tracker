@@ -185,6 +185,27 @@ The bridge (`scraper_server.js`) only forwards this JSON to `scrape_jobs.py` —
 | `jobspy` module not found | Missing pip install | `pip install -r requirements.txt` |
 | Nothing runs at 07:00 | n8n not running, or workflow not activated | Start the services (autostart/watchdog) and activate the workflow |
 
+## Keeping it running (Windows)
+
+`start_n8n.bat` and friends keep both services alive without any hardcoded paths — node, the n8n CLI and the Python
+interpreter are auto-detected (override with `SCRAPER_NODE`, `N8N_BIN`, `SCRAPER_PYTHON`).
+
+| Script | What it does |
+|--------|--------------|
+| `start_n8n.bat` | One-click launcher: starts the bridge, then n8n, and waits until both health endpoints answer (no `taskkill /f /im node.exe` — it never touches unrelated Node processes) |
+| `service_control.ps1 -Action start` | The actual start logic (health-gated, logs to `logs/startup.log`) |
+| `service_control.ps1 -Action watch` | Watchdog: probes both services and restarts whichever is down (logs to `logs/watchdog.log`) |
+| `watchdog.bat` / `watchdog_hidden.vbs` | Silent wrappers so the watchdog leaves no console window |
+| `register_tasks.ps1` | Registers the 5-minute watchdog task (`schtasks /sc minute /mo 5`) |
+
+Health endpoints: `http://localhost:3456/health` (bridge) and `http://localhost:5678/healthz` (n8n).
+
+Autostart at logon is a shortcut in the user's Startup folder pointing at `start_hidden.vbs` — creating a logon-trigger
+*scheduled task* needs administrator rights, a Startup shortcut does not. The 5-minute watchdog task works with normal
+user rights.
+
+Python must have `python-jobspy` installed; the scripts verify `import jobspy` before picking an interpreter.
+
 ## Roadmap
 
 - [x] Bundesagentur für Arbeit as primary source
@@ -192,6 +213,8 @@ The bridge (`scraper_server.js`) only forwards this JSON to `scrape_jobs.py` —
 - [x] Cross-run dedup against Notion
 - [x] OpenCode Go (DeepSeek V4 Flash) scoring
 - [x] Telegram run summary + error workflow
+- [x] English mirror of the workflow
+- [x] Windows autostart + 5-minute watchdog (no hardcoded paths)
 - [ ] Batch scoring (N jobs per model call) to cut runtime from ~15 min
 - [ ] ATS feeds (Greenhouse/Lever/SmartRecruiters/Personio) for a target-company watchlist
 - [ ] Application status sync with the personal application tracker database
@@ -208,7 +231,8 @@ The bridge (`scraper_server.js`) only forwards this JSON to `scrape_jobs.py` —
 ## Notes for the published files
 
 - The Telegram nodes in `n8n-job-scraper-workflow_zh.json` ship with a `YOUR_TELEGRAM_CHAT_ID` placeholder — put your own chat id in both Telegram nodes (or delete those nodes if you don't want notifications). The rest of the workflow is byte-identical to the working instance.
-- `n8n-job-scraper-workflow_zh.json` is the canonical, current workflow. `n8n-job-scraper-workflow_en.json` is the older pre-v2 English translation (single DeepSeek LangChain node, no BA source / defence filter / dedup) and is kept for reference only.
+- `n8n-job-scraper-workflow_zh.json` (Chinese) and `n8n-job-scraper-workflow_en.json` (English) are the same workflow: identical nodes, connections and logic, with node names, prompts, Telegram messages and sticky notes translated. Use whichever language you prefer.
+- The two files carry different `id` values, so importing both gives you two separate workflows instead of one overwriting the other. Activate only one of them (otherwise both run and the second run finds everything already in Notion).
 
 ## License
 

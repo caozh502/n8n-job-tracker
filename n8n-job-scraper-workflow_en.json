@@ -1,5 +1,5 @@
 {
-  "name": "🤖 每日求职自动化 - LinkedIn + DeepSeek + Notion",
+  "name": "🤖 Daily job automation - BA/JobSpy + OpenCode + Notion",
   "nodes": [
     {
       "parameters": {
@@ -12,13 +12,13 @@
           ]
         }
       },
-      "id": "6598d355-2cd8-4194-a89c-d1a53761efb1",
+      "id": "75ca551d-752d-4c6a-9087-52ef2d7aabec",
       "name": "⏰ Daily Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        100,
-        300
+        -135472,
+        -7216
       ]
     },
     {
@@ -26,26 +26,26 @@
         "operation": "pdf",
         "options": {}
       },
-      "id": "7d6fc23a-70e0-4cf6-898e-6c7c9ccdb4cf",
+      "id": "64ebd7b8-834f-45f3-b49b-ecc888187e35",
       "name": "📄 Extract PDF Text",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        540,
-        300
+        -135040,
+        -7216
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Extract from File outputs text in $json.text\n// No complex parsing, output raw text as CV info\nconst rawText = $json.text || $json.data || '';\nif (!rawText) return [{ cvText: 'CV read failed. Make sure cv/CV.pdf exists and is readable.' }];\n\n// Simple cleanup: remove extra whitespace, truncate long text\nconst cleanText = rawText.replace(/\\s+/g, ' ').trim();\nconst maxLen = 30000;\nconst cvText = cleanText.length > maxLen ? cleanText.substring(0, maxLen) + '...' : cleanText;\n\nreturn [{ cvText: cvText }];"
+        "jsCode": "// Extract from File puts the text in $json.text\n// No fancy parsing: pass the raw text straight through as the CV context\nconst rawText = $json.text || $json.data || '';\nif (!rawText) return [{ cvText: 'CV could not be read - check that cv/CV.pdf exists and is readable' }];\n\n// Light cleanup: collapse whitespace and cap the length\nconst cleanText = rawText.replace(/\\s+/g, ' ').trim();\nconst maxLen = 30000;\nconst cvText = cleanText.length > maxLen ? cleanText.substring(0, maxLen) + '...' : cleanText;\n\nreturn [{ cvText: cvText }];"
       },
-      "id": "9154fa77-1870-49ad-86f3-e4a3f819661e",
+      "id": "813d08f1-cc45-410f-aa22-ad719cc52005",
       "name": "📄 Structure CV Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        760,
-        300
+        -134816,
+        -7216
       ]
     },
     {
@@ -53,28 +53,28 @@
         "assignments": {
           "assignments": [
             {
-              "id": "2105c2c1-0927-499b-a62e-806e3086a61d",
-              "name": "keywords",
-              "value": "QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test",
-              "type": "string"
+              "id": "a1000000-0000-4000-8000-000000000001",
+              "name": "searchConfig",
+              "type": "object",
+              "value": "{\"keywords\": \"QA Engineer OR Test Automation OR Testingenieur OR Quality Engineer OR HiL OR CI/CD OR Embedded OR DevOps OR Software Test\", \"hours_old\": 24, \"max_total\": 30, \"sites\": [\"linkedin\", \"indeed\"], \"locations\": [[\"Munich, Germany\", 8], [\"Bavaria, Germany\", 3]], \"timeout_s\": 90, \"scraper_timeout_ms\": 330000, \"ba\": {\"enabled\": true, \"terms\": [\"Testautomatisierung\", \"Test Engineer\", \"QA Engineer\", \"Software Test\", \"HiL\", \"Embedded Software\", \"DevOps Engineer\"], \"location\": \"München\", \"radius_km\": 30, \"per_term\": 12, \"limit\": 22, \"detail_limit\": 22}}"
             },
             {
-              "id": "46d90fd1-c5f9-4baa-a41c-c80ee2c3b892",
-              "name": "location",
-              "value": "Munich, Germany",
-              "type": "string"
+              "id": "a1000000-0000-4000-8000-000000000002",
+              "name": "NotionDatabaseId",
+              "type": "string",
+              "value": "39ee7030-f79a-8071-a8ef-dfa9a1ecba1a"
             }
           ]
         },
         "options": {}
       },
-      "id": "dbcdc9e8-2a65-476c-96aa-37a2a90b9517",
+      "id": "5028529f-9d72-4ffe-ad77-b00e1402b013",
       "name": "🔍 Search Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        980,
-        300
+        -134592,
+        -7216
       ]
     },
     {
@@ -87,52 +87,60 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": []
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.searchConfig }}",
         "options": {
-          "timeout": 180000
-        },
-        "jsonBody": "{\n  \"keywords\": \"={{ $json.keywords }}\",\n  \"location\": \"={{ $json.location }}\"\n}"
+          "timeout": 340000
+        }
       },
-      "id": "15b8149d-332d-4f2e-9de3-762b342c0237",
-      "name": "🌐 Scrape LinkedIn Jobs",
+      "id": "eeecd37e-bed3-4140-b674-1bfc25a4e03b",
+      "name": "🌐 Scrape Jobs (BA + LinkedIn/Indeed)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1200,
-        300
-      ]
+        -134368,
+        -7216
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "notes": "POSTs the search config to the local scraper bridge (scraper_server.js -> scrape_jobs.py). Sources: Bundesagentur fuer Arbeit Jobsuche v6 (primary) + LinkedIn/Indeed via JobSpy."
     },
     {
       "parameters": {
-        "jsCode": "// HTTP 响应：{ count: N, jobs: [...] }\nconst data = typeof $json === 'string' ? JSON.parse($json) : $json;\nconst jobs = data?.jobs || data || [];\n\nif (!Array.isArray(jobs) || jobs.length === 0) return [];\n\n// 过滤掉实习/学生岗位\nconst BAN = [/student/i, /intern/i, /werkstudent/i, /praktikant/i, /thesis/i, /masterarbeit/i, /bachelorarbeit/i];\nconst seen = new Set();\nconst result = [];\nfor (const j of jobs) {\n  const hay = ((j.title||'') + ' ' + (j.company||'')).toLowerCase();\n  if (BAN.some(re => re.test(hay))) continue;\n  const key = (j.title||'') + '|' + (j.company||'');\n  if (seen.has(key)) continue;\n  seen.add(key);\n  result.push({\n    jobId: j.jobId || '',\n    title: j.title || '',\n    company: j.company || '',\n    location: j.location || '',\n    link: j.fullLink || '',\n    description: j.description || '',\n    postedTime: j.postedTime || new Date().toISOString(),\n    fullLink: j.fullLink || `https://www.linkedin.com/jobs/view/${j.jobId}/`\n  });\n}\nreturn [{ jobs: result }];"
+        "jsCode": "// Pipeline gate: drop internships/students, then everything defence/military.\n// Two independent layers: company blocklist + text signals (title + description).\nconst data = typeof $json === 'string' ? JSON.parse($json) : $json;\nconst jobs = (data && data.jobs) || [];\nconst srcStats = (data && data.stats) || {};\n\nconst STUDENT = [/student/i, /intern(ship)?\\b/i, /werkstudent/i, /praktik(ant|um)/i,\n                 /thesis/i, /(bachelor|master)arbeit/i, /ausbildung/i, /dual(es)? studium/i, /\\bhiwi\\b/i];\n\n// Companies whose roles are military/defence by definition (citizenship-restricted work).\nconst DEFENSE_COMPANY = [\n  /rheinmetall/i, /diehl\\b/i, /hensoldt/i, /knds/i, /krauss-?maffei/i, /wegmann/i, /mbda/i,\n  /thales/i, /airbus\\s*(defence|ds|defense)/i, /leonardo\\s*(drs|defence|uk)?/i, /lockheed/i,\n  /raytheon|\\brtx\\b/i, /northrop/i, /\\bbae\\s*systems/i, /elbit/i, /l3harris/i, /boeing\\s*(defence|defense)/i,\n  /saab\\s*(ab| defence| bofors)/i, /kongsberg/i, /anduril/i, /helsing/i, /arx\\s*robotics/i,\n  /quantum-?systems/i, /stark\\s*(defence|defense)/i, /donaustahl/i, /bundeswehr/i, /\\bbwi\\b/i,\n  /\\biabg\\b/i, /\\besg\\s*(elektronik|gmbh)?/i, /gds?els/i, /iveco\\s*defence/i, /airborne\\s*technologies/i,\n  /ffg\\s*(gmbh)?|flensburger\\s*fahrzeugbau/i, /gl\\s*group|global\\s*clearance/i, /patria\\b/i,\n  /naval\\s*group/i, /fincantieri/i, /exail/i, /arex\\b/i, /whitehead\\s*alenia/i, /deutsche\\s*panzer/i,\n  /general\\s*dynamics/i, /leidos/i, /caci\\b/i, /booz\\s*allen/i, /mitre\\b/i, /qinetiq/i,\n  /thielert|ontime-?defence/i, /simumatik/i,\n];\n// Text signals: military/defence context or citizenship/clearance gating.\nconst DEFENSE_TEXT = [\n  /\\bdefence\\b|\\bdefense\\b/i, /military|militar/i, /wehrtechnik|wehrtechnisch/i,\n  /verteidigung|rüstung|rustung/i, /\\bbundeswehr\\b/i, /\\bnato\\b/i, /\\bitar\\b/i,\n  /security\\s*clearance|sicherheitsüberprüf|sicherheitsueberpruef|erweitertes?\\s*führungszeugnis/i,\n  /\\b(ü2|ue2|ü3|ue3|sü2|su2|vs-nfd)\\b/i, /staatsbürgerschaft|staatsangehörig|citizenship/i,\n  /geheim(?!nis)|classified|streng\\s*vertraulich/i, /mil-?std|milspec/i,\n  /waffensystem|weapon\\s*system|munition|\\bmissile\\b|\\brakete\\b|panzer\\b|fregatte/i,\n  /luftverteidigung|air\\s*defence|air\\s*defense/i, /radar\\s*(system|technolog)/i,\n  /unbemannte?\\s*(system|luftfahrzeug)|\\buav\\b|\\bdrone\\s*(defence|defense|war)/i,\n  /\\bc4isr\\b|\\bc2\\s*system/i, /soldat(en)?\\b|troop/i, /verteidigungsministerium|ministry\\s*of\\s*defence/i,\n];\n\nconst stats = {\n  raw: jobs.length, droppedStudent: 0, droppedDefense: 0, droppedOther: 0,\n  defenseExamples: [], statusBySource: {},\n  sources: srcStats, errors: (srcStats && srcStats.errors) || [],\n};\nconst seenKeys = new Set();\nconst result = [];\n\nfor (const job of jobs) {\n  const title = (job.title || '').trim();\n  const company = (job.company || '').trim();\n  const desc = (job.description || '').trim();\n  const hay = (title + ' ' + company + ' ' + desc).toLowerCase();\n  stats.statusBySource[job.site || 'unknown'] = (stats.statusBySource[job.site || 'unknown'] || 0) + 1;\n\n  if (!title || !job.fullLink) { stats.droppedOther++; continue; }\n  if (STUDENT.some(re => re.test(title + ' ' + company))) { stats.droppedStudent++; continue; }\n\n  const companyHit = DEFENSE_COMPANY.find(re => re.test(company));\n  const textHit = DEFENSE_TEXT.find(re => re.test(title + ' ' + company + ' ' + desc));\n  if (companyHit || textHit) {\n    stats.droppedDefense++;\n    if (stats.defenseExamples.length < 6) {\n      stats.defenseExamples.push(`${title} @ ${company} (${(companyHit || textHit).source.slice(0, 32)})`);\n    }\n    continue;\n  }\n\n  const key = title.toLowerCase() + '|' + company.toLowerCase();\n  if (seenKeys.has(key)) { stats.droppedOther++; continue; }\n  seenKeys.add(key);\n\n  result.push({\n    jobId: job.jobId || '',\n    title,\n    company,\n    location: job.location || '',\n    link: job.fullLink || '',\n    fullLink: job.fullLink || '',\n    site: job.site || '',\n    description: (desc || title).slice(0, 3000),\n    postedTime: job.postedTime || new Date().toISOString(),\n  });\n}\nstats.kept = result.length;\nreturn [{ jobs: result, stats: stats }];\n"
       },
-      "id": "d75bcc94-1dba-4d44-be16-1ffec284d806",
+      "id": "aad05702-4158-4c78-a454-6d43831facb4",
       "name": "📋 Parse Job List",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1420,
-        300
-      ]
+        -134160,
+        -7216
+      ],
+      "notes": "Internship/student filter + defence/military filter (company blocklist + text signals) + dedupe; emits {jobs, stats}."
     },
     {
       "parameters": {
         "fieldToSplitOut": "jobs",
         "options": {}
       },
-      "id": "d72553b4-4e79-4cb5-a662-5ae9ce86f60b",
+      "id": "59559399-3d14-4573-823c-29ca612223e3",
       "name": "✂️ Split Items",
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
-        1640,
-        300
+        -133936,
+        -7216
       ]
     },
     {
@@ -140,27 +148,28 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "cdf977fe-231d-4bf4-95e3-463b83074bc2",
+      "id": "69b1b667-4a2b-44b4-8048-9da1f1187729",
       "name": "🔄 Process Each Job",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        1860,
-        300
+        -133712,
+        -7216
       ]
     },
     {
       "parameters": {
-        "jsCode": "const cvContext = $node['📄 Structure CV Text'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji});\n\nconst prompt = `You are a professional recruitment matching consultant. Evaluate the match between the candidate's CV and the job posting.\n\n## Original Data (return as-is)\n__META__${meta}__META_END__\n\n${cvContext}\n\n### Job Info\n**职位**: ${jt}\n**公司**: ${co}\n**地点**: ${lo || '慕尼黑/巴伐利亚'}\n**描述**: ${desc || jt}\n\n### Scoring Criteria\n\n| 维度 | 分值范围 | 评分指引 |\n|------|---------|---------|\n| background_match | 0-10 | Domain/industry alignment：10=岗位行业与候选人CV专业领域完全吻合；6-9=相关或可转移领域；0=完全不相关 |\n| skills_overlap | 0-25 | Skills overlap: compare tech stack, tools, methodologies. More matches = higher score |\n| experience_relevance | 0-25 | Experience relevance: how well does the candidate's experience match the role requirements |\n| seniority | 0-10 | Seniority match: 10=perfect, 5=moderate, 0=not matching |\n| language_requirement | 0-10 | Language: 10=full match (German C1+English C1), 5=partial, 0=not matching |\n| location_match | 0-10 | Location: 10=Munich area, 8=Bavaria/Hybrid, 5=Germany/Remote, 0=abroad |\n\nTotal overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match + bonus\n- Automotive industry: deduct 5 from background_match\n\n- Defense/Aerospace/国防 industry jobs are automatically filtered out and will NOT appear in results\n\n## Recommendation\n- overall >= 75 → \"Highly Match\"\n- overall >= 60 → \"Can Try\"\n- overall < 60 → \"Unfit\"\n\n## Output Format (strict JSON, no extra content)\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10, \"bonus\": 6 },\n  \"recommendation\": \"Highly Match\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"Brief match reason\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];"
+        "jsCode": "const cvContext = $node['📄 Structure CV Text'].json.cvText || '';\nconst job = $json;\nconst jt = (job.title || '').replace(/\"/g,'');\nconst co = (job.company || '').replace(/\"/g,'');\nconst lk = (job.link || job.fullLink || '').replace(/\"/g,'');\nconst lo = (job.location || '').replace(/\"/g,'');\nconst desc = (job.description || job.title || '').replace(/\"/g,'');\nconst pt = (job.postedTime || '').replace(/\"/g,'');\nconst ji = (job.jobId || '').replace(/\"/g,'');\nconst si = (job.site || '').replace(/\"/g,'');\n\nconst meta = JSON.stringify({title:jt,company:co,link:lk,location:lo,postedTime:pt,jobId:ji,site:si});\n\nconst prompt = `You are an experienced recruiting-match advisor. Rate how well the candidate's CV matches the job posting below.\n\n## Raw data (return it verbatim)\n__META__${meta}__META_END__\n\n${cvContext}\n\n### Job posting\n**Title**: ${jt}\n**Company**: ${co}\n**Location**: ${lo || 'Munich / Bavaria'}\n**Description**: ${desc || jt}\n\n### Scoring rubric\n\n| dimension | range | guidance |\n|-----------|-------|----------|\n| background_match | 0-10 | Domain/industry alignment: 10 = the posting's field matches the CV's field exactly; 6-9 = related or transferable; 0 = unrelated |\n| skills_overlap | 0-25 | Overlap between the CV's tech stack/tools/methods and the posting. More and deeper matches score higher |\n| experience_relevance | 0-25 | How well the candidate's projects and roles match the posting's responsibilities. Weigh relevance and depth |\n| seniority | 0-10 | Level fit: 10 = perfect fit for the current level; 5 = medium; 0 = no fit |\n| language_requirement | 0-10 | 10 = the posting accepts the candidate's languages (German C1+, English C1); 5 = partial; 0 = mismatch |\n| location_match | 0-10 | 10 = Munich or within 30 km; 8 = Bavaria or hybrid; 5 = elsewhere in Germany or remote; 0 = abroad |\n| bonus | 0-10 | Company reputation, growth prospects, perks |\n\noverall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + location_match + bonus\n- Automotive industry: subtract 5 from background_match\n- Defence/military/aerospace postings are filtered out automatically before scoring, so you will not see them\n\n### Recommendation buckets\n- overall >= 75 -> \"Strong match\"\n- overall >= 60 -> \"Worth trying\"\n- overall < 60 -> \"Skip\"\n\n### Output format (strict JSON, nothing else)\n{\n  \"score\": { \"overall\": 82, \"background_match\": 8, \"skills_overlap\": 20, \"experience_relevance\": 22, \"seniority\": 8, \"language_requirement\": 8, \"location_match\": 10, \"bonus\": 6 },\n  \"recommendation\": \"Strong match\",\n  \"industry\": \"Automotive\",\n  \"reason\": \"one-sentence rationale\",\n  \"_meta\": ${meta}\n}`;\n\nreturn [{ prompt: prompt }];\n"
       },
-      "id": "d2eacb61-4673-4f3f-be67-4cac2af8f09f",
+      "id": "cc076848-1926-4849-8489-310f4a6449db",
       "name": "✍️ Prepare Scoring Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2080,
-        300
-      ]
+        -133488,
+        -7216
+      ],
+      "notes": "Builds the scoring prompt; _meta carries title/company/link/location/postedTime/jobId/site."
     },
     {
       "parameters": {
@@ -186,13 +195,13 @@
         },
         "options": {}
       },
-      "id": "8a65a24f-428c-4826-915c-5d5cde539337",
-      "name": "🔝 第一关: 高度符合 (≥7.5)",
+      "id": "062c3ed0-c58c-408c-8edc-003cffefd4f0",
+      "name": "🔝 Tier 1: Strong match (≥7.5)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        3400,
-        300
+        -132176,
+        -7216
       ]
     },
     {
@@ -238,18 +247,22 @@
             {
               "key": "Match Reason|rich_text",
               "textContent": "={{ $json.reason }}"
+            },
+            {
+              "key": "Notes|rich_text",
+              "textContent": "={{ `source ${$json.site || '?'} · skills ${$json.skillMatch}/10 · industry ${$json.industryMatch}/10 · seniority ${$json.levelMatch}/10 · location ${$json.locationMatch}/10 · language ${$json.languageMatch}/10` }}"
             }
           ]
         },
         "options": {}
       },
-      "id": "494525bc-28ad-4a11-8206-469b054fb303",
-      "name": "📝 Notion: ⭐ Highly Match",
+      "id": "c66fd3a4-b9e9-4b2e-bd0e-3ac698c8ffe5",
+      "name": "📝 Notion: ⭐ Strong match",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        3620,
-        200
+        -131952,
+        -7312
       ],
       "credentials": {
         "notionApi": {
@@ -282,13 +295,13 @@
         },
         "options": {}
       },
-      "id": "fbac05a4-7982-4304-9387-fa13ba794627",
-      "name": "🔝 第二关: 可以尝试 (≥6)",
+      "id": "017d1817-537c-4ae7-9020-fb848d0a9bce",
+      "name": "🔝 Tier 2: Worth trying (≥6)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        3840,
-        350
+        -131728,
+        -7136
       ]
     },
     {
@@ -334,18 +347,22 @@
             {
               "key": "Match Reason|rich_text",
               "textContent": "={{ $json.reason }}"
+            },
+            {
+              "key": "Notes|rich_text",
+              "textContent": "={{ `source ${$json.site || '?'} · skills ${$json.skillMatch}/10 · industry ${$json.industryMatch}/10 · seniority ${$json.levelMatch}/10 · location ${$json.locationMatch}/10 · language ${$json.languageMatch}/10` }}"
             }
           ]
         },
         "options": {}
       },
-      "id": "d90e0a26-5621-4726-97fa-79bc9c3880ce",
-      "name": "📝 Notion: 💪 Can Try",
+      "id": "eb3356da-1c37-48af-82ed-a8582597a821",
+      "name": "📝 Notion: 💪 Worth trying",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2,
       "position": [
-        4060,
-        370
+        -131520,
+        -7136
       ],
       "credentials": {
         "notionApi": {
@@ -356,39 +373,40 @@
     },
     {
       "parameters": {},
-      "id": "791a43b9-f1e1-44f2-bbc7-49b679d2229a",
-      "name": "⏭️ 跳过不适合 (<6)",
+      "id": "7e7f977e-ddfe-4c5f-a4a1-90719bb77eb6",
+      "name": "⏭️ Skip (<6)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        4280,
-        490
+        -131296,
+        -7024
       ]
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'Unfit', industry:'Other', reason:'Parse failed', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Highly Match';\n  else if (overall >= 60) r = 'Can Try';\n  else r = 'Unfit';\n}\n\nlet ml = '';\nif (r === 'Highly Match') ml = '⭐ Highly Match';\nelse if (r === 'Can Try') ml = '💪 Can Try';\nelse ml = '❌ Unfit';\n\n// 修复：overall/10 而不是 Math.round(overall/10)/10\nconst displayScore = Math.round(overall) / 10;\n\nreturn [{ jobId, title, company, location, link,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'Skip', industry:'Other', reason:'unparsed response', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Strong match';\n  else if (overall >= 60) r = 'Worth trying';\n  else r = 'Skip';\n}\n\nlet ml = '';\nif (r === 'Strong match') ml = '⭐ Strong match';\nelse if (r === 'Worth trying') ml = '💪 Worth trying';\nelse ml = '❌ Skip';\n\n// Second gate: if the model still lets a defence/military posting through, force it to 0 here\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = 'Skip'; ml = '❌ Skip (defence/military)'; }\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
-      "id": "c701e95c-9f53-4ae3-a8be-8d2fad516833",
+      "id": "0d7b7ab1-d89e-4a57-b603-d9902b918660",
       "name": "📊 Parse Score Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2740,
-        300
-      ]
+        -132832,
+        -7216
+      ],
+      "notes": "Parses the OpenCode Go response; zero-scores anything the model still classifies as defence/military so it can never reach Notion."
     },
     {
       "parameters": {
-        "jsCode": "// 过滤Defense行业岗位，排序取Top10\nconst items = $input.all()\n  .filter(i => {\n    const industry = (i.json.industry || '').toLowerCase();\n    return !industry.includes('defense') && !industry.includes('aerospace') && !industry.includes('defence') && !industry.includes('国防') && !industry.includes('航天');\n  });\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nreturn items.slice(0, 10).map(i => i.json);"
+        "jsCode": "// Sort scored jobs, count how many get written, keep the top 10 for Notion.\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nconst scored = items.length;\nconst keep = items.slice(0, 10);\nconst above = keep.filter(i => (i.json.score || 0) >= 6).length;\nreturn keep.map((i, idx) => ({\n  ...i.json,\n  _rank: idx + 1,\n  _scoredTotal: scored,\n  _writtenEstimate: above,\n  _top: items[0] ? `${items[0].json.title} @ ${items[0].json.company} (${items[0].json.score})` : '',\n}));\n"
       },
-      "id": "0fd33c9b-73cf-4bbd-a5ec-af91d248194a",
-      "name": "📊 Sort + Top10",
+      "id": "e6fd68ce-6d8b-476f-a866-982f77a66446",
+      "name": "📊 Sort + Top 10",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2960,
-        300
+        -132608,
+        -7216
       ]
     },
     {
@@ -396,13 +414,13 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "14dac9b5-04d5-4b8d-a337-c6946b5325d2",
-      "name": "🔄 Write to Notion",
+      "id": "1899e386-dfe3-4678-a598-4027a46a7e68",
+      "name": "🔄 Write Each to Notion",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        3180,
-        300
+        -132400,
+        -7216
       ]
     },
     {
@@ -413,10 +431,10 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        320,
-        300
+        -135248,
+        -7216
       ],
-      "id": "57cbb67f-2648-472a-b6d1-9da36223c1a2",
+      "id": "7933fd8b-019f-4c2f-9eca-d1949797a63a",
       "name": "📄 Read CV.pdf"
     },
     {
@@ -448,7 +466,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { model: 'deepseek-v4-flash', messages: [ { role: 'system', content: \"你是一个招聘匹配专家。严格按照要求的 JSON 格式输出，只输出 JSON，不要任何额外内容。\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, stream: false } }}",
+        "jsonBody": "={{ { model: 'deepseek-v4-flash', messages: [ { role: 'system', content: \"You are a recruitment matching expert. Reply with strict JSON only - no extra text.\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, stream: false } }}",
         "options": {
           "timeout": 180000
         }
@@ -456,10 +474,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2300,
-        300
+        -133280,
+        -7216
       ],
-      "id": "8f1c2ab6-77d4-4c31-9c6e-3a5b1d9e04ab",
+      "id": "8f1c2ab6-77d4-4c31-9c6e-3a5b1d9e04aa",
       "name": "🧠 OpenCode DeepSeek Scoring",
       "credentials": {
         "httpBearerAuth": {
@@ -472,6 +490,247 @@
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
       "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4-flash. Requires x-opencode-session header + browser UA, otherwise 400/403."
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "39ee7030-f79a-8071-a8ef-dfa9a1ecba1a",
+          "mode": "list",
+          "cachedResultName": "Job Recommendations",
+          "cachedResultUrl": "https://app.notion.com/p/39ee7030f79a8071a8efdfa9a1ecba1a"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -133936,
+        -7216
+      ],
+      "id": "b2000000-0000-4000-8000-000000000001",
+      "name": "📥 Read Existing Notion Jobs",
+      "credentials": {
+        "notionApi": {
+          "id": "tcd5imju5iIX4ZPN",
+          "name": "Notion account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Reads existing recommendations so already-seen postings are skipped (fail-open: if Notion is down, the run continues)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cross-run dedupe: drop postings that are already in the Notion database.\n// NOTE: n8n's Notion node flattens properties to `property_<name>` keys (property_link,\n// property_job_title, ...) and `url` is the Notion page URL - so scan every nested value.\nconst existing = new Set();\nconst existingIds = new Set();\n\nconst norm = (u) => String(u || '').split('?')[0].replace(/\\/+$/, '').toLowerCase();\nconst harvest = (v, urls, ids, depth = 0) => {\n  if (v === null || v === undefined || depth > 6) return;\n  if (typeof v === 'string') {\n    if (/^https?:\\/\\//i.test(v)) urls.push(v);\n    else if (/^[a-z]+:[^\\s]{6,}$/.test(v)) ids.push(v);\n    return;\n  }\n  if (typeof v !== 'object') return;\n  if (Array.isArray(v)) { v.forEach(x => harvest(x, urls, ids, depth + 1)); return; }\n  for (const [k, val] of Object.entries(v)) {\n    if (/job_?id|refnr|referenz/i.test(k) && typeof val === 'string') ids.push(val);\n    harvest(val, urls, ids, depth + 1);\n  }\n};\n\nlet rows = 0;\nfor (const item of $input.all()) {\n  const j = item.json || {};\n  if (!Object.keys(j).length) continue;               // alwaysOutputData placeholder row\n  rows++;\n  const urls = [], ids = [];\n  harvest(j, urls, ids);\n  for (const u of urls) {\n    existing.add(norm(u));\n    const li = u.match(/\\/jobs\\/view\\/(\\d+)/);\n    if (li) existingIds.add('linkedin:' + li[1]);\n    const ba = u.match(/jobdetail\\/([^/?#]+)/);\n    if (ba) existingIds.add('ba:' + decodeURIComponent(ba[1]));\n    const baRef = u.match(/(\\d{3,6}-\\d{6,12}-S)/);\n    if (baRef) existingIds.add('ba:' + baRef[1]);\n  }\n  for (const i of ids) existingIds.add(String(i).trim());\n}\n\nconst upstream = $('📋 Parse Job List').first().json;\nconst jobs = upstream.jobs || [];\nconst stats = Object.assign({}, upstream.stats || {});\nconst fresh = [];\nconst skipped = [];\n\nfor (const job of jobs) {\n  const link = norm(job.fullLink);\n  const jid = job.jobId || '';\n  const dup = (link && existing.has(link)) || (jid && existingIds.has(jid));\n  if (dup) { skipped.push(job.title + ' @ ' + job.company); continue; }\n  fresh.push(job);\n}\nstats.alreadyInNotion = skipped.length;\nstats.existingRows = rows;\nstats.newJobs = fresh.length;\nstats.skippedExamples = skipped.slice(0, 5);\nreturn [{ jobs: fresh, stats: stats }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -133712,
+        -7216
+      ],
+      "id": "b2000000-0000-4000-8000-000000000002",
+      "name": "🔁 Drop Already Seen",
+      "notes": "Dedupe against the Notion database (by link + jobId) so a job is only ever recommended once."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.cvText }}",
+              "rightValue": "CV could not be read",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -134592,
+        -7312
+      ],
+      "id": "c3000000-0000-4000-8000-000000000002",
+      "name": "🛡️ CV Valid?",
+      "notes": "Abort loudly instead of scoring every job against a broken CV."
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -134368,
+        -7088
+      ],
+      "id": "c3000000-0000-4000-8000-000000000003",
+      "name": "📵 CV Unreadable"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -134144,
+        -6928
+      ],
+      "id": "c3000000-0000-4000-8000-000000000004",
+      "name": "❌ Scrape Failed",
+      "notes": "Error output of the scraper node (bridge down / scrape failed). Checked by the error workflow + Telegram."
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ (() => {\n  const st = $('🔁 Drop Already Seen').first().json.stats || {};\n  const w = $('📊 Sort + Top 10').first().json || {};\n  const src = st.sources || {};\n  const errs = (st.errors || []).slice(0, 3);\n  const lines = [\n    '🤖 Job automation finished',\n    `Scraped ${st.raw || 0} postings (BA ${src.arbeitsagentur || 0} / LinkedIn ${src.linkedin || 0} / Indeed ${src.indeed || 0})`,\n    `Filtered out: internships ${st.droppedStudent || 0} · defence/military ${st.droppedDefense || 0}`,\n    `Already in Notion, skipped: ${st.alreadyInNotion || 0}`,\n    `New this run: ${st.newJobs || 0} -> scored -> written: ${w.written || '?'}`,\n  ];\n  if (w.top) lines.push('Top score: ' + w.top);\n  if (st.defenseExamples && st.defenseExamples.length) lines.push('Skipped (defence examples): ' + st.defenseExamples.slice(0, 3).join(' | '));\n  if (errs.length) lines.push('⚠️ Scrape warnings: ' + errs.join(' | '));\n  return lines.join('\\n');\n})() }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -132176,
+        -7024
+      ],
+      "id": "c3000000-0000-4000-8000-000000000005",
+      "name": "📣 Telegram Run Summary",
+      "credentials": {
+        "telegramApi": {
+          "id": "tgJobTracker001",
+          "name": "Telegram (Job Tracker)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Run summary; also the smoke signal that the daily automation actually ran."
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "⚠️ Job automation aborted: cv/CV.pdf could not be read. Check that the file exists.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -134144,
+        -7088
+      ],
+      "id": "c3000000-0000-4000-8000-000000000006",
+      "name": "📵 Telegram: CV Missing",
+      "credentials": {
+        "telegramApi": {
+          "id": "tgJobTracker001",
+          "name": "Telegram (Job Tracker)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Run summary; also the smoke signal that the daily automation actually ran."
+    },
+    {
+      "parameters": {
+        "content": "## 1. Read the CV\npdf -> text -> validity check (aborts loudly if unreadable)",
+        "height": 200,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -135280,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 1"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Scrape jobs\nConfig lives in `🔍 Search Config` (single source of truth) -> local bridge on localhost:3456\nPrimary: Bundesagentur für Arbeit Jobsuche v6 (free, stable)\nSecondary: JobSpy -> LinkedIn / Indeed (rate limited)",
+        "height": 220,
+        "width": 520,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -134400,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 2"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Filter + dedupe\ninternships/students -> defence/military (company blocklist + text signals) -> already in Notion",
+        "height": 200,
+        "width": 620,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -134192,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 3"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Score (OpenCode Go -> DeepSeek V4 Flash)\none call per job, 3 retries; anything scoring < 6 is dropped",
+        "height": 170,
+        "width": 560,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -133520,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 4"
+    },
+    {
+      "parameters": {
+        "content": "## 5. Write to Notion + summary\nTop 10, tiers at 7.5 / 6; Telegram run summary at the end",
+        "height": 170,
+        "width": 560,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -132208,
+        -7476
+      ],
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Sticky 5"
     }
   ],
   "pinData": {},
@@ -480,7 +739,7 @@
       "main": [
         [
           {
-            "node": "🌐 Scrape LinkedIn Jobs",
+            "node": "🌐 Scrape Jobs (BA + LinkedIn/Indeed)",
             "type": "main",
             "index": 0
           }
@@ -498,18 +757,7 @@
         ],
         [
           {
-            "node": "📊 Sort + Top10",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🌐 Scrape LinkedIn Jobs": {
-      "main": [
-        [
-          {
-            "node": "📋 Parse Job List",
+            "node": "📊 Sort + Top 10",
             "type": "main",
             "index": 0
           }
@@ -520,7 +768,7 @@
       "main": [
         [
           {
-            "node": "✂️ Split Items",
+            "node": "📥 Read Existing Notion Jobs",
             "type": "main",
             "index": 0
           }
@@ -560,80 +808,87 @@
         ]
       ]
     },
-    "🔝 第一关: 高度符合 (≥7.5)": {
+    "🔝 Tier 1: Strong match (≥7.5)": {
       "main": [
         [
           {
-            "node": "📝 Notion: ⭐ Highly Match",
+            "node": "📝 Notion: ⭐ Strong match",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "🔝 第二关: 可以尝试 (≥6)",
+            "node": "🔝 Tier 2: Worth trying (≥6)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "🔝 第二关: 可以尝试 (≥6)": {
+    "🔝 Tier 2: Worth trying (≥6)": {
       "main": [
         [
           {
-            "node": "📝 Notion: 💪 Can Try",
+            "node": "📝 Notion: 💪 Worth trying",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "⏭️ 跳过不适合 (<6)",
+            "node": "⏭️ Skip (<6)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "🔄 Write to Notion": {
+    "🔄 Write Each to Notion": {
       "main": [
         [
           {
-            "node": "🔝 第一关: 高度符合 (≥7.5)",
+            "node": "🔝 Tier 1: Strong match (≥7.5)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📣 Telegram Run Summary",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "📝 Notion: ⭐ Highly Match": {
+    "📝 Notion: ⭐ Strong match": {
       "main": [
         [
           {
-            "node": "🔄 Write to Notion",
+            "node": "🔄 Write Each to Notion",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "📝 Notion: 💪 Can Try": {
+    "📝 Notion: 💪 Worth trying": {
       "main": [
         [
           {
-            "node": "🔄 Write to Notion",
+            "node": "🔄 Write Each to Notion",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "⏭️ 跳过不适合 (<6)": {
+    "⏭️ Skip (<6)": {
       "main": [
         [
           {
-            "node": "🔄 Write to Notion",
+            "node": "🔄 Write Each to Notion",
             "type": "main",
             "index": 0
           }
@@ -666,7 +921,7 @@
       "main": [
         [
           {
-            "node": "🔍 Search Config",
+            "node": "🛡️ CV Valid?",
             "type": "main",
             "index": 0
           }
@@ -684,11 +939,11 @@
         ]
       ]
     },
-    "📊 Sort + Top10": {
+    "📊 Sort + Top 10": {
       "main": [
         [
           {
-            "node": "🔄 Write to Notion",
+            "node": "🔄 Write Each to Notion",
             "type": "main",
             "index": 0
           }
@@ -705,21 +960,92 @@
           }
         ]
       ]
+    },
+    "🌐 Scrape Jobs (BA + LinkedIn/Indeed)": {
+      "main": [
+        [
+          {
+            "node": "📋 Parse Job List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Scrape Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🛡️ CV Valid?": {
+      "main": [
+        [
+          {
+            "node": "🔍 Search Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📵 CV Unreadable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📵 CV Unreadable": {
+      "main": [
+        [
+          {
+            "node": "📵 Telegram: CV Missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Read Existing Notion Jobs": {
+      "main": [
+        [
+          {
+            "node": "🔁 Drop Already Seen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔁 Drop Already Seen": {
+      "main": [
+        [
+          {
+            "node": "✂️ Split Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timezone": "Europe/Berlin",
+    "errorWorkflow": "errWfJobTracker1"
   },
-  "versionId": "bb7fb0b3-6b26-4b47-9724-e3525c78bc71",
+  "versionId": "ce9a7156-7a39-4678-b14b-d4ef94fe1108",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "f9583a2878b9913846bae1d3c63adcc29894a195e5c2e8b215d593672edcd790"
   },
   "nodeGroups": [],
-  "id": "CITsvLWCfUkmDEsT",
+  "id": "ndZRNdd2GncXrxLr",
   "tags": [],
-  "description": "Daily job search: scrape LinkedIn/Indeed (JobSpy, 4 regions) → score each posting with DeepSeek V4 Flash on OpenCode Go (7 dimensions) → write Top 10 to Notion."
+  "description": "Scrapes Bundesagentur/JobSpy postings daily, filters internships and defence/military jobs, dedupes against Notion, scores them with DeepSeek V4 Flash on OpenCode Go, then writes the Top 10 to Notion and posts a Telegram summary."
 }

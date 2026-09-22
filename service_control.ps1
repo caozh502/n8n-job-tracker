@@ -74,27 +74,65 @@ $script:LogFile = Join-Path $script:LogDir $(switch ($Action) {
 })
 
 function Find-NodeExe {
-    $cands = @(
-        (Join-Path $env:LOCALAPPDATA 'hermes\node\node.exe'),
-        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
-        (Join-Path ${env:ProgramFiles(x86)} 'nodejs\node.exe')
-    )
-    foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
+    # 1) explicit override, 2) PATH, 3) well-known install dirs, 4) bundled runtime
+    if ($env:SCRAPER_NODE -and (Test-Path $env:SCRAPER_NODE)) { return $env:SCRAPER_NODE }
     $cmd = Get-Command node.exe -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
+    $cands = @(
+        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
+        (Join-Path ${env:ProgramFiles(x86)} 'nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'hermes\node\node.exe')
+    )
+    foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
     return 'node.exe'
 }
 
+function Test-Jobspy {
+    param([string]$Exe)
+    if (-not $Exe) { return $false }
+    try {
+        $null = & $Exe -c 'import jobspy' 2>$null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
+}
+
 function Find-Python {
+    # prefer an interpreter that can actually import the scraper dependency
     if ($env:SCRAPER_PYTHON -and (Test-Path $env:SCRAPER_PYTHON)) { return $env:SCRAPER_PYTHON }
-    $p = Join-Path $env:LOCALAPPDATA 'hermes\hermes-agent\venv\Scripts\python.exe'
-    if (Test-Path $p) { return $p }
+    $cands = @()
+    foreach ($name in @('python.exe', 'python3.exe')) {
+        $c = Get-Command $name -ErrorAction SilentlyContinue
+        if ($c) { $cands += $c.Source }
+    }
+    $cands += (Join-Path $env:LOCALAPPDATA 'hermes\hermes-agent\venv\Scripts\python.exe')
+    foreach ($c in $cands) { if ($c -and (Test-Path $c) -and (Test-Jobspy $c)) { return $c } }
+    foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
     return 'python'
+}
+
+function Find-N8nBin {
+    # never assume an install prefix: ask npm, ask PATH, then try the usual places
+    if ($env:N8N_BIN -and (Test-Path $env:N8N_BIN)) { return $env:N8N_BIN }
+    $prefixes = @()
+    try {
+        $npmPrefix = (& npm config get prefix 2>$null | Select-Object -First 1)
+        if ($npmPrefix) { $prefixes += $npmPrefix.Trim() }
+    } catch { }
+    $shim = Get-Command n8n -ErrorAction SilentlyContinue
+    if ($shim) { $prefixes += (Split-Path -Parent $shim.Source) }
+    $prefixes += (Join-Path $env:APPDATA 'npm')
+    $prefixes += (Join-Path $env:USERPROFILE 'npm-global')
+    foreach ($p in $prefixes) {
+        if (-not $p) { continue }
+        $bin = Join-Path $p 'node_modules\n8n\bin\n8n'
+        if (Test-Path $bin) { return $bin }
+    }
+    throw "n8n CLI not found. Install it ('npm i -g n8n') or set N8N_BIN to the n8n\bin\n8n path."
 }
 
 $script:NodeExe = Find-NodeExe
 $script:Python  = Find-Python
-$script:N8nBin  = Join-Path $env:USERPROFILE 'npm-global\node_modules\n8n\bin\n8n'
+$script:N8nBin  = Find-N8nBin
 
 # environment inherited by every service process we spawn
 $env:SCRAPER_PYTHON               = $script:Python
