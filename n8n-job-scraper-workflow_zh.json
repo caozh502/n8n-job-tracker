@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 7 * * 1-5"
+              "expression": "0 13 * * 1-5"
             }
           ]
         }
@@ -731,6 +731,34 @@
       ],
       "id": "d4000000-0000-4000-8000-000000000001",
       "name": "Sticky 5"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ '⚠️ 求职自动化：抓取失败\\n' + ($json.error?.message || $json.message || 'unknown error') + '\\n检查本地抓取桥 (localhost:3456) 是否在运行。' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -133920,
+        -6928
+      ],
+      "id": "c3000000-0000-4000-8000-000000000007",
+      "name": "📣 Telegram: 抓取失败",
+      "credentials": {
+        "telegramApi": {
+          "id": "tgJobTracker001",
+          "name": "Telegram (Job Tracker)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Alerts when the scraper node fails (bridge down, scrape error) instead of ending the run silently."
     }
   ],
   "pinData": {},
@@ -1024,6 +1052,17 @@
         [
           {
             "node": "✂️ 拆分岗位条目",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ 抓取失败": {
+      "main": [
+        [
+          {
+            "node": "📣 Telegram: 抓取失败",
             "type": "main",
             "index": 0
           }

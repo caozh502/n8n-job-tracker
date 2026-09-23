@@ -19,6 +19,15 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Windows quirk: when stdout is a pipe (spawned by the bridge) Python uses the ANSI code
+# page (e.g. GBK) and printing non-ASCII ("München") raises UnicodeEncodeError, which made
+# the whole run return 0 jobs. Force UTF-8 before anything writes output.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 BA_BASE = "https://rest.arbeitsagentur.de/jobboerse/jobsuche-service"
 BA_HEADERS = {
     "X-API-Key": "jobboerse-jobsuche",
@@ -309,7 +318,11 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:                            # never exit without JSON on stdout
-        print(json.dumps({"count": 0, "jobs": [],
-                          "stats": {"errors": [f"fatal: {type(exc).__name__}: {exc}"]}}))
-        sys.exit(1)
+    except Exception as exc:          # always emit JSON for the bridge, but fail loudly
+        import traceback
+        msg = f"fatal: {type(exc).__name__}: {exc}"
+        print(json.dumps({"count": 0, "jobs": [], "fatal": True,
+                          "stats": {"errors": [msg]}}))
+        print(f"[scraper] {msg}", file=sys.stderr, flush=True)
+        print(traceback.format_exc(), file=sys.stderr, flush=True)
+        sys.exit(2)

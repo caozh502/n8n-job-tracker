@@ -136,6 +136,8 @@ $script:N8nBin  = Find-N8nBin
 
 # environment inherited by every service process we spawn
 $env:SCRAPER_PYTHON               = $script:Python
+$env:PYTHONUTF8                   = '1'      # job titles contain non-ASCII characters
+$env:PYTHONIOENCODING             = 'utf-8'
 $env:SCRAPER_PORT                 = "$($script:ScraperPort)"
 $env:N8N_RESTRICT_FILE_ACCESS_TO  = $script:CvDir
 $env:N8N_PORT                     = "$($script:N8nPort)"

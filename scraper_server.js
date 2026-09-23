@@ -66,7 +66,9 @@ const server = http.createServer((req, res) => {
     const started = Date.now();
     log(`scrape start (timeout ${timeout}ms, ba=${!!(cfg.ba && cfg.ba.enabled)}, sites=${JSON.stringify(cfg.sites || [])})`);
 
-    execFile(PYTHON, [scraperPath, JSON.stringify(cfg)], { timeout, maxBuffer: 64 * 1024 * 1024 },
+    const childEnv = { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' };
+    execFile(PYTHON, [scraperPath, JSON.stringify(cfg)],
+      { timeout, maxBuffer: 64 * 1024 * 1024, env: childEnv },
       (err, stdout, stderr) => {
         busy = false;
         const took = ((Date.now() - started) / 1000).toFixed(1);
@@ -88,6 +90,14 @@ const server = http.createServer((req, res) => {
             error: 'scraper_unparseable',
             stdout_head: String(stdout || '').slice(0, 500),
             stderr: String(stderr || '').slice(-800),
+          });
+        }
+        if (data.fatal) {                     // the scraper reported a hard failure
+          log(`scrape FATAL after ${took}s: ${((data.stats && data.stats.errors) || []).join(' | ')}`);
+          return send(res, 500, {
+            error: 'scraper_fatal',
+            message: (((data.stats && data.stats.errors) || []).join(' | ')).slice(0, 300),
+            jobs: [], count: 0,
           });
         }
         log(`scrape done in ${took}s: ${data.count || 0} jobs`);
