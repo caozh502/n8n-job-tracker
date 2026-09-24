@@ -218,7 +218,7 @@
           "propertyValues": [
             {
               "key": "Job Title|title",
-              "title": "={{ $json.title }}"
+              "title": "={{ $json.title || 'Untitled posting' }}"
             },
             {
               "key": "Company|rich_text",
@@ -226,11 +226,11 @@
             },
             {
               "key": "Location|select",
-              "selectValue": "={{ $json.location.split(',')[0].trim() }}"
+              "selectValue": "={{ ($json.location || '').split(',')[0].trim() || null }}"
             },
             {
               "key": "Industry|select",
-              "selectValue": "={{ $json.industry }}"
+              "selectValue": "={{ $json.industry || null }}"
             },
             {
               "key": "Score|number",
@@ -238,7 +238,7 @@
             },
             {
               "key": "Link|url",
-              "urlValue": "={{ $json.link }}"
+              "urlValue": "={{ $json.link || null }}"
             },
             {
               "key": "Posted|date",
@@ -269,7 +269,10 @@
           "id": "tcd5imju5iIX4ZPN",
           "name": "Notion account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -318,7 +321,7 @@
           "propertyValues": [
             {
               "key": "Job Title|title",
-              "title": "={{ $json.title }}"
+              "title": "={{ $json.title || 'Untitled posting' }}"
             },
             {
               "key": "Company|rich_text",
@@ -326,11 +329,11 @@
             },
             {
               "key": "Location|select",
-              "selectValue": "={{ $json.location.split(',')[0].trim() }}"
+              "selectValue": "={{ ($json.location || '').split(',')[0].trim() || null }}"
             },
             {
               "key": "Industry|select",
-              "selectValue": "={{ $json.industry }}"
+              "selectValue": "={{ $json.industry || null }}"
             },
             {
               "key": "Score|number",
@@ -338,7 +341,7 @@
             },
             {
               "key": "Link|url",
-              "urlValue": "={{ $json.link }}"
+              "urlValue": "={{ $json.link || null }}"
             },
             {
               "key": "Posted|date",
@@ -369,7 +372,10 @@
           "id": "tcd5imju5iIX4ZPN",
           "name": "Notion account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {},
@@ -384,7 +390,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\nconst meta = scoreData._meta || {};\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 第二道关卡：即使模型放行了军工/国防岗位，也在这里判 0 分丢弃\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = '不适合'; ml = '❌ 不适合（军工/国防）'; }\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\n// Job identity comes from the pipeline item itself - never trust the model's _meta echo.\nlet up = {};\ntry { up = ($('✂️ 拆分岗位条目').item || {}).json || {}; } catch (e) { up = {}; }\nconst meta = Object.assign({}, scoreData._meta || {}, {\n  title: up.title || (scoreData._meta || {}).title,\n  company: up.company || (scoreData._meta || {}).company,\n  link: up.fullLink || up.link || (scoreData._meta || {}).link,\n  location: up.location || (scoreData._meta || {}).location,\n  postedTime: up.postedTime || (scoreData._meta || {}).postedTime,\n  jobId: up.jobId || (scoreData._meta || {}).jobId,\n  site: up.site || (scoreData._meta || {}).site,\n});\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 第二道关卡：即使模型放行了军工/国防岗位，也在这里判 0 分丢弃\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = '不适合'; ml = '❌ 不适合（军工/国防）'; }\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: scoreData.reason || '',\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
       "id": "0d7b7ab1-d89e-4a57-b603-d9902b918660",
       "name": "📊 解析评分结果",
@@ -394,7 +400,7 @@
         -132832,
         -7216
       ],
-      "notes": "Parses the OpenCode Go response; zero-scores anything the model still classifies as defence/military so it can never reach Notion."
+      "notes": "Parses the OpenCode Go response; job identity is taken from the upstream item (the model's _meta echo is only a fallback)."
     },
     {
       "parameters": {
@@ -622,7 +628,8 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
-      "notes": "Run summary; also the smoke signal that the daily automation actually ran."
+      "notes": "Run summary; also the smoke signal that the daily automation actually ran.",
+      "executeOnce": true
     },
     {
       "parameters": {
@@ -650,7 +657,8 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
-      "notes": "Run summary; also the smoke signal that the daily automation actually ran."
+      "notes": "Run summary; also the smoke signal that the daily automation actually ran.",
+      "executeOnce": true
     },
     {
       "parameters": {
@@ -758,7 +766,8 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
-      "notes": "Alerts when the scraper node fails (bridge down, scrape error) instead of ending the run silently."
+      "notes": "Alerts when the scraper node fails (bridge down, scrape error) instead of ending the run silently.",
+      "executeOnce": true
     }
   ],
   "pinData": {},
