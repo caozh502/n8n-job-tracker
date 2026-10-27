@@ -56,7 +56,7 @@ An n8n workflow that runs every weekday morning and:
 |-------------|----------------|
 | [Python](https://www.python.org/) | >= 3.10 (needs `python-jobspy` + `requests`) |
 | [n8n](https://docs.n8n.io/hosting/installation/) | 2.30+ (self-hosted, npm install) |
-| [OpenCode Go](https://opencode.ai/) API key | $10/mo subscription — serves `deepseek-v4-flash`, the scoring model |
+| [OpenCode Go](https://opencode.ai/) API key | $10/mo subscription — serves `deepseek-v4.1-flash`, the scoring model |
 | [Notion](https://www.notion.so/) account | Free tier — internal integration with access to the job database |
 | Telegram bot (optional) | For the run summary and error alerts |
 

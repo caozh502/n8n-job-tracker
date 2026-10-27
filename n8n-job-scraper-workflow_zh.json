@@ -390,7 +390,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason:'解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\n// Job identity comes from the pipeline item itself - never trust the model's _meta echo.\nlet up = {};\ntry { up = ($('✂️ 拆分岗位条目').item || {}).json || {}; } catch (e) { up = {}; }\nconst meta = Object.assign({}, scoreData._meta || {}, {\n  title: up.title || (scoreData._meta || {}).title,\n  company: up.company || (scoreData._meta || {}).company,\n  link: up.fullLink || up.link || (scoreData._meta || {}).link,\n  location: up.location || (scoreData._meta || {}).location,\n  postedTime: up.postedTime || (scoreData._meta || {}).postedTime,\n  jobId: up.jobId || (scoreData._meta || {}).jobId,\n  site: up.site || (scoreData._meta || {}).site,\n});\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 第二道关卡：即使模型放行了军工/国防岗位，也在这里判 0 分丢弃\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = '不适合'; ml = '❌ 不适合（军工/国防）'; }\n\n// Match Reason: two blocks, one bullet per line (Notion renders the newlines).\nconst toBullets = (arr, max) => (Array.isArray(arr) ? arr : [])\n  .filter(x => typeof x === 'string' && x.trim())\n  .slice(0, max)\n  .map(s => '- ' + s.trim().replace(/\\s+/g, ' ').slice(0, 120));\nconst matchPoints = toBullets(scoreData.match_points, 4);\nconst considerations = toBullets(scoreData.considerations, 4);\nconst blocks = [];\nif (matchPoints.length) blocks.push('✅ 匹配点\\n' + matchPoints.join('\\n'));\nif (considerations.length) blocks.push('⚠️ 需考虑\\n' + considerations.join('\\n'));\nlet reasonText = blocks.join('\\n\\n');\nif (!reasonText) reasonText = String(scoreData.reason || '').trim();   // fallback for older/looser output\nreasonText = reasonText.slice(0, 1800);                                 // Notion rich_text safety margin\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: reasonText,\n  matchPoints, considerations,\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const apiErr = $json?.error?.message || $json?.error?.error?.message || (typeof $json?.error === 'string' ? $json.error : '') || ($json?.statusCode && $json.statusCode >= 400 ? `HTTP ${$json.statusCode}` : '');\nconst raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json?.choices?.[0]?.message?.reasoning_content\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nconst parseFailed = Boolean(apiErr) || !scoreData || !scoreData.score;\nconst llmErrorMsg = apiErr ? String(apiErr).slice(0, 160) : (parseFailed ? 'JSON解析失败' : '');\nif (parseFailed) {\n  scoreData = { score:{overall:50}, recommendation:'不适合', industry:'Other', reason: llmErrorMsg ? ('评分失败: ' + llmErrorMsg) : '解析失败', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\n// Job identity comes from the pipeline item itself - never trust the model's _meta echo.\nlet up = {};\ntry { up = ($('✂️ 拆分岗位条目').item || {}).json || {}; } catch (e) { up = {}; }\nconst meta = Object.assign({}, scoreData._meta || {}, {\n  title: up.title || (scoreData._meta || {}).title,\n  company: up.company || (scoreData._meta || {}).company,\n  link: up.fullLink || up.link || (scoreData._meta || {}).link,\n  location: up.location || (scoreData._meta || {}).location,\n  postedTime: up.postedTime || (scoreData._meta || {}).postedTime,\n  jobId: up.jobId || (scoreData._meta || {}).jobId,\n  site: up.site || (scoreData._meta || {}).site,\n});\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = '高度符合';\n  else if (overall >= 60) r = '可以尝试';\n  else r = '不适合';\n}\n\nlet ml = '';\nif (r === '高度符合') ml = '⭐ 高度符合';\nelse if (r === '可以尝试') ml = '💪 可以尝试';\nelse ml = '❌ 不适合';\n\n// 第二道关卡：即使模型放行了军工/国防岗位，也在这里判 0 分丢弃\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = '不适合'; ml = '❌ 不适合（军工/国防）'; }\n\n// Match Reason: two blocks, one bullet per line (Notion renders the newlines).\nconst toBullets = (arr, max) => (Array.isArray(arr) ? arr : [])\n  .filter(x => typeof x === 'string' && x.trim())\n  .slice(0, max)\n  .map(s => '- ' + s.trim().replace(/\\s+/g, ' ').slice(0, 120));\nconst matchPoints = toBullets(scoreData.match_points, 4);\nconst considerations = toBullets(scoreData.considerations, 4);\nconst blocks = [];\nif (matchPoints.length) blocks.push('✅ 匹配点\\n' + matchPoints.join('\\n'));\nif (considerations.length) blocks.push('⚠️ 需考虑\\n' + considerations.join('\\n'));\nlet reasonText = blocks.join('\\n\\n');\nif (!reasonText) reasonText = String(scoreData.reason || '').trim();   // fallback for older/looser output\nreasonText = reasonText.slice(0, 1800);                                 // Notion rich_text safety margin\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  llmFailed: parseFailed, llmError: llmErrorMsg,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: reasonText,\n  matchPoints, considerations,\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
       "id": "0d7b7ab1-d89e-4a57-b603-d9902b918660",
       "name": "📊 解析评分结果",
@@ -404,7 +404,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Sort scored jobs, count how many get written, keep the top 10 for Notion.\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nconst scored = items.length;\nconst keep = items.slice(0, 10);\nconst above = keep.filter(i => (i.json.score || 0) >= 6).length;\nreturn keep.map((i, idx) => ({\n  ...i.json,\n  _rank: idx + 1,\n  _scoredTotal: scored,\n  _writtenEstimate: above,\n  _top: items[0] ? `${items[0].json.title} @ ${items[0].json.company} (${items[0].json.score})` : '',\n}));\n"
+        "jsCode": "// Sort scored jobs, count how many get written, keep the top 10 for Notion.\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nconst scored = items.length;\nconst failedItems = items.filter(i => i.json.llmFailed);\nconst llmFailedCount = failedItems.length;\nconst llmErrorSample = failedItems[0] ? (failedItems[0].json.llmError || 'unknown') : '';\nconst keep = items.slice(0, 10);\nconst above = keep.filter(i => (i.json.score || 0) >= 6).length;\nconst topStr = items[0] ? `${items[0].json.title} @ ${items[0].json.company} (${items[0].json.score})` : '';\nreturn keep.map((i, idx) => ({\n  ...i.json,\n  _rank: idx + 1,\n  _scoredTotal: scored,\n  _writtenEstimate: above,\n  _top: topStr,\n  _llmFailedCount: llmFailedCount,\n  _llmErrorSample: llmErrorSample,\n  written: above,\n  top: topStr,\n  llmFailedCount,\n  llmErrorSample,\n}));\n"
       },
       "id": "e6fd68ce-6d8b-476f-a866-982f77a66446",
       "name": "📊 排序+Top10",
@@ -472,7 +472,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { model: 'deepseek-v4-flash', messages: [ { role: 'system', content: \"你是一个招聘匹配专家。严格按照要求的 JSON 格式输出，只输出 JSON，不要任何额外内容。\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, stream: false } }}",
+        "jsonBody": "={{ { model: 'deepseek-v4.1-flash', messages: [ { role: 'system', content: \"你是一个招聘匹配专家。严格按照要求的 JSON 格式输出，只输出 JSON，不要任何额外内容。\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, thinking: { type: 'disabled' }, stream: false } }}",
         "options": {
           "timeout": 180000
         }
@@ -495,7 +495,7 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
-      "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4-flash. Requires x-opencode-session header + browser UA, otherwise 400/403."
+      "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4.1-flash (thinking disabled). Requires x-opencode-session header + browser UA, otherwise 400/403."
     },
     {
       "parameters": {
@@ -605,9 +605,10 @@
     {
       "parameters": {
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
-        "text": "={{ (() => {\n  const st = $('🔁 过滤已存在').first().json.stats || {};\n  const w = $('📊 排序+Top10').first().json || {};\n  const src = st.sources || {};\n  const errs = (st.errors || []).slice(0, 3);\n  const lines = [\n    '🤖 求职自动化完成',\n    `抓取 ${st.raw || 0} 个岗位 (BA ${src.arbeitsagentur || 0} / LinkedIn ${src.linkedin || 0} / Indeed ${src.indeed || 0})`,\n    `过滤：实习/学生 ${st.droppedStudent || 0} · 军工国防 ${st.droppedDefense || 0}`,\n    `Notion 已存在跳过 ${st.alreadyInNotion || 0}`,\n    `本次新岗位 ${st.newJobs || 0} → 打分完成 → 入库 ${w.written || '?'} 条`,\n  ];\n  if (w.top) lines.push('最高分：' + w.top);\n  if (st.defenseExamples && st.defenseExamples.length) lines.push('已跳过(军工示例)：' + st.defenseExamples.slice(0, 3).join(' | '));\n  if (errs.length) lines.push('⚠️ 抓取告警：' + errs.join(' | '));\n  return lines.join('\\n');\n})() }}",
+        "text": "={{ (() => {\n  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n  const st = $('🔁 过滤已存在').first().json.stats || {};\n  let w = {};\n  try { w = $('📊 排序+Top10').first().json || {}; } catch (e) { w = {}; }\n  const written = w.written !== undefined ? w.written : (w._writtenEstimate !== undefined ? w._writtenEstimate : 0);\n  const top = w.top || w._top || '';\n  const llmFail = w.llmFailedCount || w._llmFailedCount || 0;\n  const llmErr = w.llmErrorSample || w._llmErrorSample || '';\n  const src = st.sources || {};\n  const errs = (st.errors || []).slice(0, 3);\n  const lines = [\n    '🤖 求职自动化完成',\n    `抓取 ${st.raw || 0} 个岗位 (BA ${src.arbeitsagentur || 0} / LinkedIn ${src.linkedin || 0} / Indeed ${src.indeed || 0})`,\n    `过滤：实习/学生 ${st.droppedStudent || 0} · 军工国防 ${st.droppedDefense || 0}`,\n    `Notion 已存在跳过 ${st.alreadyInNotion || 0}`,\n    `本次新岗位 ${st.newJobs || 0} → 打分完成 → 入库 ${written} 条`,\n  ];\n  if (llmFail > 0) lines.push(`⚠️ AI 打分异常：${llmFail}/${st.newJobs || '?'} 条失败 (${esc(llmErr)})`);\n  if (top) lines.push('最高分：' + esc(top));\n  if (st.defenseExamples && st.defenseExamples.length) lines.push('已跳过(军工示例)：' + esc(st.defenseExamples.slice(0, 3).join(' | ')));\n  if (errs.length) lines.push('⚠️ 抓取告警：' + esc(errs.join(' | ')));\n  return lines.join('\\n');\n})() }}",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -636,7 +637,8 @@
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "⚠️ 求职自动化中止：CV.pdf 读取失败，请检查 cv/CV.pdf 是否存在。",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -743,9 +745,10 @@
     {
       "parameters": {
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
-        "text": "={{ '⚠️ 求职自动化：抓取失败\\n' + ($json.error?.message || $json.message || 'unknown error') + '\\n检查本地抓取桥 (localhost:3456) 是否在运行。' }}",
+        "text": "={{ '⚠️ 求职自动化：抓取失败\\n' + String($json.error?.message || $json.message || 'unknown error').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '\\n检查本地抓取桥 (localhost:3456) 是否在运行。' }}",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",

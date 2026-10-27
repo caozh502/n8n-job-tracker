@@ -390,7 +390,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nif (!scoreData || !scoreData.score) {\n  scoreData = { score:{overall:50}, recommendation:'Skip', industry:'Other', reason:'unparsed response', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\n// Job identity comes from the pipeline item itself - never trust the model's _meta echo.\nlet up = {};\ntry { up = ($('✂️ Split Items').item || {}).json || {}; } catch (e) { up = {}; }\nconst meta = Object.assign({}, scoreData._meta || {}, {\n  title: up.title || (scoreData._meta || {}).title,\n  company: up.company || (scoreData._meta || {}).company,\n  link: up.fullLink || up.link || (scoreData._meta || {}).link,\n  location: up.location || (scoreData._meta || {}).location,\n  postedTime: up.postedTime || (scoreData._meta || {}).postedTime,\n  jobId: up.jobId || (scoreData._meta || {}).jobId,\n  site: up.site || (scoreData._meta || {}).site,\n});\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Strong match';\n  else if (overall >= 60) r = 'Worth trying';\n  else r = 'Skip';\n}\n\nlet ml = '';\nif (r === 'Strong match') ml = '⭐ Strong match';\nelse if (r === 'Worth trying') ml = '💪 Worth trying';\nelse ml = '❌ Skip';\n\n// Second gate: if the model still lets a defence/military posting through, force it to 0 here\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = 'Skip'; ml = '❌ Skip (defence/military)'; }\n\n// Match Reason: two blocks, one bullet per line (Notion renders the newlines).\nconst toBullets = (arr, max) => (Array.isArray(arr) ? arr : [])\n  .filter(x => typeof x === 'string' && x.trim())\n  .slice(0, max)\n  .map(s => '- ' + s.trim().replace(/\\s+/g, ' ').slice(0, 120));\nconst matchPoints = toBullets(scoreData.match_points, 4);\nconst considerations = toBullets(scoreData.considerations, 4);\nconst blocks = [];\nif (matchPoints.length) blocks.push('✅ Strong matches\\n' + matchPoints.join('\\n'));\nif (considerations.length) blocks.push('⚠️ Considerations\\n' + considerations.join('\\n'));\nlet reasonText = blocks.join('\\n\\n');\nif (!reasonText) reasonText = String(scoreData.reason || '').trim();   // fallback for older/looser output\nreasonText = reasonText.slice(0, 1800);                                 // Notion rich_text safety margin\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: reasonText,\n  matchPoints, considerations,\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
+        "jsCode": "const apiErr = $json?.error?.message || $json?.error?.error?.message || (typeof $json?.error === 'string' ? $json.error : '') || ($json?.statusCode && $json.statusCode >= 400 ? `HTTP ${$json.statusCode}` : '');\nconst raw = $json?.choices?.[0]?.message?.content   // OpenCode Go / OpenAI-compatible response\n  || $json?.choices?.[0]?.message?.reasoning_content\n  || $json.text || $json.output || $json.response || JSON.stringify($json);\nlet scoreData;\ntry { scoreData = JSON.parse(raw); }\ncatch(e) {\n  try { const m = raw.match(/\\{[\\s\\S]*\\}/); if (m) scoreData = JSON.parse(m[0]); }\n  catch(e2) { scoreData = {}; }\n}\n\nconst parseFailed = Boolean(apiErr) || !scoreData || !scoreData.score;\nconst llmErrorMsg = apiErr ? String(apiErr).slice(0, 160) : (parseFailed ? 'JSONunparsed response' : '');\nif (parseFailed) {\n  scoreData = { score:{overall:50}, recommendation:'Skip', industry:'Other', reason: llmErrorMsg ? ('Scoring failed: ' + llmErrorMsg) : 'unparsed response', _meta:{} };\n}\n\nconst s = scoreData.score || {};\nconst overall = s.overall !== undefined ? s.overall : 50;\n\n// Job identity comes from the pipeline item itself - never trust the model's _meta echo.\nlet up = {};\ntry { up = ($('✂️ Split Items').item || {}).json || {}; } catch (e) { up = {}; }\nconst meta = Object.assign({}, scoreData._meta || {}, {\n  title: up.title || (scoreData._meta || {}).title,\n  company: up.company || (scoreData._meta || {}).company,\n  link: up.fullLink || up.link || (scoreData._meta || {}).link,\n  location: up.location || (scoreData._meta || {}).location,\n  postedTime: up.postedTime || (scoreData._meta || {}).postedTime,\n  jobId: up.jobId || (scoreData._meta || {}).jobId,\n  site: up.site || (scoreData._meta || {}).site,\n});\nconst title = meta.title || $json.title || '';\nconst company = meta.company || $json.company || '';\nconst link = meta.link || $json.link || '';\nconst location = meta.location || $json.location || '';\nconst postedTime = meta.postedTime || $json.postedTime || new Date().toISOString();\nconst site = meta.site || $json.site || '';\nconst jobId = meta.jobId || $json.jobId || '';\n\nlet r = scoreData.recommendation || '';\nif (!r) {\n  if (overall >= 75) r = 'Strong match';\n  else if (overall >= 60) r = 'Worth trying';\n  else r = 'Skip';\n}\n\nlet ml = '';\nif (r === 'Strong match') ml = '⭐ Strong match';\nelse if (r === 'Worth trying') ml = '💪 Worth trying';\nelse ml = '❌ Skip';\n\n// Second gate: if the model still lets a defence/military posting through, force it to 0 here\nconst DEF_VERDICT = /defen[cs]e|militar|wehr|r[uü]stung|armament|bundeswehr|nato/i;\nconst isDefense = DEF_VERDICT.test(String(scoreData.industry || ''));\nconst displayScore = isDefense ? 0 : Math.round(overall) / 10;\nif (isDefense) { r = 'Skip'; ml = '❌ Skip (defence/military)'; }\n\n// Match Reason: two blocks, one bullet per line (Notion renders the newlines).\nconst toBullets = (arr, max) => (Array.isArray(arr) ? arr : [])\n  .filter(x => typeof x === 'string' && x.trim())\n  .slice(0, max)\n  .map(s => '- ' + s.trim().replace(/\\s+/g, ' ').slice(0, 120));\nconst matchPoints = toBullets(scoreData.match_points, 4);\nconst considerations = toBullets(scoreData.considerations, 4);\nconst blocks = [];\nif (matchPoints.length) blocks.push('✅ Strong matches\\n' + matchPoints.join('\\n'));\nif (considerations.length) blocks.push('⚠️ Considerations\\n' + considerations.join('\\n'));\nlet reasonText = blocks.join('\\n\\n');\nif (!reasonText) reasonText = String(scoreData.reason || '').trim();   // fallback for older/looser output\nreasonText = reasonText.slice(0, 1800);                                 // Notion rich_text safety margin\n\nreturn [{ jobId, title, company, location, link, site, defenseBlocked: isDefense,\n  llmFailed: parseFailed, llmError: llmErrorMsg,\n  description: $json.description || '',\n  postedTime, score: displayScore,\n  recommendation: r, matchLevel: ml,\n  reason: reasonText,\n  matchPoints, considerations,\n  industry: scoreData.industry || 'Other',\n  skillMatch: s.skills_overlap ? Math.round(s.skills_overlap/2.5) : 5,\n  industryMatch: s.background_match || 5,\n  levelMatch: s.seniority || 5,\n  locationMatch: s.location_match || 5,\n  languageMatch: s.language_requirement || 5\n}];"
       },
       "id": "0d7b7ab1-d89e-4a57-b603-d9902b918660",
       "name": "📊 Parse Score Result",
@@ -404,7 +404,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Sort scored jobs, count how many get written, keep the top 10 for Notion.\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nconst scored = items.length;\nconst keep = items.slice(0, 10);\nconst above = keep.filter(i => (i.json.score || 0) >= 6).length;\nreturn keep.map((i, idx) => ({\n  ...i.json,\n  _rank: idx + 1,\n  _scoredTotal: scored,\n  _writtenEstimate: above,\n  _top: items[0] ? `${items[0].json.title} @ ${items[0].json.company} (${items[0].json.score})` : '',\n}));\n"
+        "jsCode": "// Sort scored jobs, count how many get written, keep the top 10 for Notion.\nconst items = $input.all();\nitems.sort((a, b) => (b.json.score || 0) - (a.json.score || 0));\nconst scored = items.length;\nconst failedItems = items.filter(i => i.json.llmFailed);\nconst llmFailedCount = failedItems.length;\nconst llmErrorSample = failedItems[0] ? (failedItems[0].json.llmError || 'unknown') : '';\nconst keep = items.slice(0, 10);\nconst above = keep.filter(i => (i.json.score || 0) >= 6).length;\nconst topStr = items[0] ? `${items[0].json.title} @ ${items[0].json.company} (${items[0].json.score})` : '';\nreturn keep.map((i, idx) => ({\n  ...i.json,\n  _rank: idx + 1,\n  _scoredTotal: scored,\n  _writtenEstimate: above,\n  _top: topStr,\n  _llmFailedCount: llmFailedCount,\n  _llmErrorSample: llmErrorSample,\n  written: above,\n  top: topStr,\n  llmFailedCount,\n  llmErrorSample,\n}));\n"
       },
       "id": "e6fd68ce-6d8b-476f-a866-982f77a66446",
       "name": "📊 Sort + Top 10",
@@ -472,7 +472,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { model: 'deepseek-v4-flash', messages: [ { role: 'system', content: \"You are a recruitment matching expert. Reply with strict JSON only - no extra text.\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, stream: false } }}",
+        "jsonBody": "={{ { model: 'deepseek-v4.1-flash', messages: [ { role: 'system', content: \"You are a recruitment matching expert. Reply with strict JSON only - no extra text.\" }, { role: 'user', content: $json.prompt } ], temperature: 0.3, max_tokens: 3000, thinking: { type: 'disabled' }, stream: false } }}",
         "options": {
           "timeout": 180000
         }
@@ -495,7 +495,7 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
-      "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4-flash. Requires x-opencode-session header + browser UA, otherwise 400/403."
+      "notes": "opencode.ai/zen/go/v1 (OpenCode Go subscription) — deepseek-v4.1-flash (thinking disabled). Requires x-opencode-session header + browser UA, otherwise 400/403."
     },
     {
       "parameters": {
@@ -607,7 +607,8 @@
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "={{ (() => {\n  const st = $('🔁 Drop Already Seen').first().json.stats || {};\n  const w = $('📊 Sort + Top 10').first().json || {};\n  const src = st.sources || {};\n  const errs = (st.errors || []).slice(0, 3);\n  const lines = [\n    '🤖 Job automation finished',\n    `Scraped ${st.raw || 0} postings (BA ${src.arbeitsagentur || 0} / LinkedIn ${src.linkedin || 0} / Indeed ${src.indeed || 0})`,\n    `Filtered out: internships ${st.droppedStudent || 0} · defence/military ${st.droppedDefense || 0}`,\n    `Already in Notion, skipped: ${st.alreadyInNotion || 0}`,\n    `New this run: ${st.newJobs || 0} -> scored -> written: ${w.written || '?'}`,\n  ];\n  if (w.top) lines.push('Top score: ' + w.top);\n  if (st.defenseExamples && st.defenseExamples.length) lines.push('Skipped (defence examples): ' + st.defenseExamples.slice(0, 3).join(' | '));\n  if (errs.length) lines.push('⚠️ Scrape warnings: ' + errs.join(' | '));\n  return lines.join('\\n');\n})() }}",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -636,7 +637,8 @@
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "⚠️ Job automation aborted: cv/CV.pdf could not be read. Check that the file exists.",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -745,7 +747,8 @@
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "={{ '⚠️ Job automation: scrape failed\\n' + ($json.error?.message || $json.message || 'unknown error') + '\\nCheck that the local scraper bridge (localhost:3456) is running.' }}",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
